@@ -244,8 +244,9 @@ def brief_cards_html():
             dec_html = '<div class="dec"><div class="dh">🎯 决策方案 <span style="float:right;font-weight:400">模拟场景 · 假设持有</span></div>' + "\n".join(rows) + "</div>"
         means_html = f'<div class="means"><b>对你意味着</b>　{H.escape(means)}</div>' if means else ""
         cards.append(
-            f'<div class="brief {cls}"><div class="t"><span class="lv-tag">{tag.get(lvch,"")}</span>{H.escape(title)}</div>'
-            f'<div class="f">{H.escape(fact)}</div>{means_html}{dec_html}</div>'
+            f'<div class="brief {cls}"><div class="bar"></div><div class="body">'
+            f'<div class="t"><span class="lv-tag">{tag.get(lvch, "")}</span>{H.escape(title)}</div>'
+            f'<div class="f">{H.escape(fact)}</div>{means_html}{dec_html}</div></div>'
         )
     return "\n".join(cards) if cards else '<div class="empty">无情报条目</div>'
 
