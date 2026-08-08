@@ -41,6 +41,8 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:12p
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:10px}
 .panel-h{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:1.2px;color:var(--dim);text-transform:uppercase;font-weight:700}
 .panel-h .hint{font-weight:400;letter-spacing:0;text-transform:none;color:var(--faint);font-size:10px}
+.panel-h{font-size:11px;letter-spacing:0;text-transform:none;font-weight:500}
+.panel-h .hint{font-size:10px}
 .panel-b{padding:6px 10px}
 
 /* ── Brief cards ── */
@@ -82,7 +84,7 @@ ul.tl li::before{content:"▸";position:absolute;left:2px;color:var(--gold);font
 
 /* ── Watchlist ── */
 table{width:100%;border-collapse:collapse}
-th{font-size:9px;letter-spacing:1px;color:var(--faint);text-align:right;padding:4px 8px;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase}
+th{font-size:10px;letter-spacing:0;color:var(--dim);text-align:right;padding:5px 8px;border-bottom:1px solid var(--line);font-weight:500}
 th:first-child,th:nth-child(2){text-align:left}
 td{padding:4px 8px;border-bottom:1px solid rgba(42,46,57,.6);font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 td:first-child{text-align:left;font-family:var(--mono);color:#7db3ff;font-size:11px}
@@ -115,6 +117,9 @@ td.vol{font-family:var(--mono);font-size:10px;color:var(--faint)}
 .statusbar .srcs{display:flex;gap:12px;overflow:hidden;white-space:nowrap}
 .statusbar .ok::before{content:"●";color:var(--up);margin-right:4px;font-size:8px}
 .statusbar .bad::before{content:"●";color:var(--down);margin-right:4px;font-size:8px}
+.sym-link{color:#7db3ff;text-decoration:none}
+.sym-link:hover{text-decoration:underline}
+.topbar .search{margin-left:8px}
 </style>
 </head>
 <body>

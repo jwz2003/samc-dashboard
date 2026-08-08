@@ -183,7 +183,7 @@ def market_rows_html(quotes):
             closes = q["closes"][-5:]
             sp = sparkline(closes)
             cls = "up" if q["chg"] > 0.05 else ("down" if q["chg"] < -0.05 else "flat")
-            out.append(f'<tr data-sym="{H.escape(q["sym"])}"><td>{q["short"]}</td><td>{q["name"]}</td>'
+            out.append(f'<tr data-sym="{H.escape(q["sym"])}"><td><a class="sym-link" href="detail.html?s={H.escape(q["sym"])}">{q["short"]}</a></td><td>{q["name"]}</td>'
                        f'<td>{q["price"]:,.2f}</td><td><span class="chg {cls}">{q["chg"]:+.2f}%</span></td>'
                        f'<td class="vol">{q["vol"]}</td><td>{sp}</td></tr>')
     return "\n".join(out)
@@ -206,7 +206,7 @@ def index_charts_html(quotes):
                 y = h - pad - (v - mn) / rg * (h - 2 * pad)
                 pts.append(f"{x:.1f},{y:.1f}")
             lx = pad + (len(closes) - 1) * (w - 2 * pad) / (len(closes) - 1)
-            col = "#089981" if q["chg"] > 0.05 else ("#f23645" if q["chg"] < -0.05 else "#787b86")
+            col = "#2962ff"
             chart = (f'<svg class="idx-chart" viewBox="0 0 {w} {h}" preserveAspectRatio="none">'
                      f'<defs><linearGradient id="g{q["sym"]}" x1="0" y1="0" x2="0" y2="1">'
                      f'<stop offset="0" stop-color="{col}" stop-opacity=".22"/>'
@@ -470,7 +470,13 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .m .v{font-family:var(--mono);font-size:17px;font-weight:700;margin-top:2px}
 .m .s{font-size:10.5px;color:var(--dim)}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:14px;overflow:hidden}
-.panel-h{padding:8px 14px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-weight:700}
+.panel-h{padding:8px 14px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:0;color:var(--dim);font-weight:500;display:flex;align-items:center;justify-content:space-between}
+.tf{display:flex;gap:2px}
+.tf button{background:transparent;border:1px solid transparent;color:var(--dim);font-size:11px;padding:2px 9px;border-radius:4px;cursor:pointer;font-family:var(--sans)}
+.tf button:hover{background:var(--hover);color:var(--txt)}
+.tf button.on{background:var(--hover);color:var(--txt);border-color:var(--line2)}
+.loading{color:var(--faint);padding:24px;text-align:center;font-size:12px}
+.errbox{display:none;color:var(--down);background:var(--down-bg);border:1px solid var(--line);border-radius:6px;padding:14px;margin:14px;font-size:12px}
 .chart-box{background:#0e1119;padding:12px 8px 4px}
 .chart-box svg{width:100%;height:320px;display:block}
 .legend{display:flex;gap:18px;padding:8px 14px;font-size:10.5px;color:var(--dim)}
@@ -496,8 +502,8 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   </div>
   <div class="metrics" id="metrics"></div>
   <div class="panel">
-    <div class="panel-h">近一年走势 · 价格 / MA20 / MA50</div>
-    <div class="chart-box"><div id="chart"></div></div>
+    <div class="panel-h"><span>价格走势 · 价格 / MA20 / MA50</span><span class="tf"><button data-r="30">1M</button><button data-r="90">3M</button><button data-r="180">6M</button><button data-r="252" class="on">1Y</button></span></div>
+    <div class="chart-box"><div id="chart"><div class="loading">数据加载中…</div></div></div>
     <div class="legend"><span><i style="background:#7db3ff"></i>价格</span><span><i style="background:var(--gold)"></i>MA20</span><span><i style="background:#b066ff"></i>MA50</span></div>
   </div>
   <div class="panel">
@@ -508,11 +514,15 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 <div class="statusbar"><span id="src"></span><span>仅供个人研究 · 模拟决策不构成投资建议</span></div>
 <script src="data.js"></script>
 <script>
+window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
 const s = new URLSearchParams(location.search).get('s');
 const q = (window.QUOTES||{})[s];
-document.title = (q? q.short+' · ' : '') + 'SAM C 情报终端';
-if (!q) { document.getElementById('price').textContent = '未找到该标的'; }
-else {
+document.title = (q? q.short+' · ' : '') + 'SAM C';
+if (!q) {
+  document.getElementById('errbox').style.display = 'block';
+  document.getElementById('errbox').textContent = '未找到标的「' + s + '」——数据尚未生成或代码有误';
+  document.getElementById('price').textContent = '—';
+} else {
   document.getElementById('sym').textContent = q.short;
   document.getElementById('name').textContent = q.name + ' · ' + q.group;
   document.getElementById('price').textContent = q.price.toLocaleString(undefined,{minimumFractionDigits:2});
@@ -520,7 +530,6 @@ else {
   const c = document.getElementById('chg');
   c.textContent = (q.chg>=0?'+':'') + q.chg.toFixed(2) + '%';
   c.className = 'chg ' + (q.chg>0.05?'up':q.chg<-0.05?'down':'flat');
-  // 指标
   const pos = q.hi52>q.lo52 ? Math.round((q.price-q.lo52)/(q.hi52-q.lo52)*100) : 0;
   const m = [
     ['52周高', q.hi52.toLocaleString(), ''], ['52周低', q.lo52.toLocaleString(), ''],
@@ -535,23 +544,31 @@ else {
     (x[0]==='RSI14'&&q.rsi14!=null?`<div class="s">${q.rsi14>=70?'超买':q.rsi14<=30?'超卖':'中性'}</div>`:'') +
     (x[0]==='52周位置'?`<div class="pos-bar"><i style="width:${pos}%"></i></div>`:'') +
     `</div>`).join('');
-  // 大图
-  const W=900,H=300,P=12,cl=q.closes,ds=q.dates;
-  if (cl && cl.length>10) {
-    const mn=Math.min(...cl), mx=Math.max(...cl), rg=(mx-mn)||1;
-    const X=i=>P+i*(W-2*P)/(cl.length-1), Y=v=>H-P-(v-mn)/rg*(H-2*P);
-    const line=(arr,color,w)=>{let d='';arr.forEach((v,i)=>{d+=(i?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1)+' '});return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}"/>`};
-    const ma20=q.ma20?null:null, m20=cl.map((_,i)=>i>=19?cl.slice(i-19,i+1).reduce((a,b)=>a+b)/20:null);
-    const m50=cl.map((_,i)=>i>=49?cl.slice(i-49,i+1).reduce((a,b)=>a+b)/50:null);
+  // 图表（支持周期切换）
+  const W=900,H=300,P=12;
+  function drawChart(r){
+    const cl=q.closes, ds=q.dates;
+    const box=document.getElementById('chart');
+    if (!cl || cl.length<10){ box.innerHTML='<div class="loading">数据点不足，无法绘图</div>'; return; }
+    const sl=cl.slice(-r), sld=ds?ds.slice(-r):[];
+    const mn=Math.min(...sl), mx=Math.max(...sl), rg=(mx-mn)||1;
+    const X=i=>P+i*(W-2*P)/(sl.length-1), Y=v=>H-P-(v-mn)/rg*(H-2*P);
+    const line=(arr,color,w)=>{let d='';arr.forEach((v,i)=>{if(v==null)return;d+=(d?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1)+' '});return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}"/>`};
+    const m20=sl.map((_,i)=>i>=19?sl.slice(i-19,i+1).reduce((a,b)=>a+b)/20:null);
+    const m50=sl.map((_,i)=>i>=49?sl.slice(i-49,i+1).reduce((a,b)=>a+b)/50:null);
     let grid='';for(let g=0;g<5;g++){const y=Y(mn+rg*g/4);grid+=`<line x1="${P}" y1="${y}" x2="${W-P}" y2="${y}" stroke="#2a2e39" stroke-width="1"/>`;}
-    const area=`<path d="M${X(0).toFixed(1)},${Y(cl[0]).toFixed(1)} ${cl.map((v,i)=>'L'+X(i).toFixed(1)+','+Y(v).toFixed(1)).join(' ')} L${X(cl.length-1).toFixed(1)},${H-P} L${X(0).toFixed(1)},${H-P} Z" fill="rgba(41,98,255,.12)"/>`;
-    document.getElementById('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${area}${line(cl,'#7db3ff',2)}${line(m20.filter(v=>v!=null),'#d4a853',1.2)}${line(m50.filter(v=>v!=null),'#b066ff',1.2)}</svg>`;
+    const area=`<path d="M${X(0).toFixed(1)},${Y(sl[0]).toFixed(1)} ${sl.map((v,i)=>'L'+X(i).toFixed(1)+','+Y(v).toFixed(1)).join(' ')} L${X(sl.length-1).toFixed(1)},${H-P} L${X(0).toFixed(1)},${H-P} Z" fill="rgba(41,98,255,.10)"/>`;
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${area}${line(sl,'#2962ff',2)}${line(m20,'#d4a853',1.2)}${line(m50,'#b066ff',1.2)}</svg>`;
   }
-  // 新闻
+  drawChart(252);
+  document.querySelectorAll('.tf button').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.tf button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); drawChart(+b.dataset.r);
+  }));
   const nw = q.news||[];
   document.getElementById('news').innerHTML = nw.length ? nw.map(n=>`<a href="${n.u}" target="_blank">${n.t}<span class="src">${n.s}</span></a>`).join('') : '<div class="empty">暂无相关新闻</div>';
 }
-document.getElementById('src').textContent = '数据源：Yahoo Finance / 东方财富 / Google News · 更新 ' + new Date().toLocaleString('zh-CN');
+document.getElementById('src').textContent = 'Yahoo Finance · 东方财富 · Google News · 更新 ' + new Date().toLocaleString('zh-CN');
 </script>
 </body>
 </html>
