@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{title}} · 深度分析 · SAM C</title>
+<style>
+:root{--bg:#000;--panel:#131722;--panel2:#1a1f2e;--hover:#232833;--line:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--blue:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:12px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:34px}
+.topbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:14px;padding:8px 16px;background:#0a0a0c;border-bottom:1px solid var(--line)}
+.back{color:var(--dim);text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:4px}
+.back:hover{color:var(--txt);border-color:var(--line2)}
+.sym-big{font-family:var(--mono);font-size:19px;font-weight:800;color:#7db3ff}
+.name-line{font-size:11px;color:var(--dim)}
+.live{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);letter-spacing:1px}
+.live i{width:6px;height:6px;border-radius:50%;background:var(--up);box-shadow:0 0 6px var(--up);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.wrap{max-width:1100px;margin:0 auto;padding:16px 18px}
+.price-row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.price{font-family:var(--mono);font-size:40px;font-weight:800}
+.chg{font-family:var(--mono);font-size:18px;font-weight:700}
+.up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--dim)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.m{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:9px 13px}
+.m .k{font-size:10px;color:var(--faint)}
+.m .v{font-family:var(--mono);font-size:16px;font-weight:700;margin-top:2px}
+.m .s{font-size:10px;color:var(--dim)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;margin-bottom:12px;overflow:hidden}
+.panel-h{padding:7px 14px;border-bottom:1px solid var(--line);font-size:11px;color:var(--dim);font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.panel-h .tag{font-size:9.5px;color:var(--faint);font-family:var(--mono)}
+.chart-box{background:#000;padding:10px 6px 4px}
+.chart-box svg{width:100%;display:block}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;color:var(--dim);text-align:right;padding:5px 12px;border-bottom:1px solid var(--line);font-weight:500}
+th:first-child{text-align:left}
+td{padding:5px 12px;border-bottom:1px solid rgba(42,46,57,.6);font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums}
+td:first-child{text-align:left;color:var(--dim)}
+tr:hover td{background:var(--hover)}
+.loading{color:var(--faint);padding:20px;text-align:center}
+.errbox{display:none;color:var(--down);background:rgba(242,54,69,.1);border:1px solid var(--line);border-radius:4px;padding:12px;margin:12px;font-size:12px}
+.statusbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:4px 16px;background:#0a0a0c;border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="back" id="back" href="index.html">← 返回</a>
+  <div><span class="sym-big" id="sym">—</span> <span class="name-line" id="name"></span></div>
+  <div class="live"><i></i>LIVE</div>
+</div>
+<div class="wrap">
+  <div class="errbox" id="errbox"></div>
+  <div class="price-row">
+    <span class="price" id="price">—</span><span class="chg" id="chg"></span><span id="cur" style="color:var(--faint);font-size:11px"></span>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="panel">
+    <div class="panel-h"><span>MACD · 12 / 26 / 9</span><span class="tag">MACD · SIGNAL · HIST</span></div>
+    <div class="chart-box"><div id="c-macd"><div class="loading">计算中…</div></div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-h"><span>布林带 · MA20 ± 2σ</span><span class="tag">BOLL</span></div>
+    <div class="chart-box"><div id="c-boll"><div class="loading">计算中…</div></div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-h"><span>RSI · 14 日历史</span><span class="tag">30 / 70</span></div>
+    <div class="chart-box"><div id="c-rsi"><div class="loading">计算中…</div></div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-h"><span>月度涨跌 · 近 12 个月</span><span class="tag">MONTHLY</span></div>
+    <table><thead><tr><th>月份</th><th>收盘</th><th>月涨跌</th></tr></thead><tbody id="t-monthly"></tbody></table>
+  </div>
+</div>
+<div class="statusbar"><span id="src"></span><span>仅供个人研究</span></div>
+<script src="data.js"></script>
+<script>
+window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
+const s = new URLSearchParams(location.search).get('s');
+const q = (window.QUOTES||{})[s];
+document.getElementById('back').href = 'detail.html?s=' + encodeURIComponent(s);
+if (!q) {
+  const e=document.getElementById('errbox'); e.style.display='block';
+  e.textContent='未找到标的「'+s+'」';
+} else {
+  document.title = q.short + ' · 深度分析 · SAM C';
+  document.getElementById('sym').textContent = q.short;
+  document.getElementById('name').textContent = q.name + ' · ' + q.group;
+  document.getElementById('price').textContent = q.price.toLocaleString(undefined,{minimumFractionDigits:2});
+  document.getElementById('cur').textContent = q.cur;
+  const c=document.getElementById('chg');
+  c.textContent=(q.chg>=0?'+':'')+q.chg.toFixed(2)+'%';
+  c.className='chg '+(q.chg>0.05?'up':q.chg<-0.05?'down':'flat');
+  const cl=q.closes, ds=q.dates;
+  // 统计卡
+  const rets=[]; for(let i=1;i<cl.length;i++) rets.push(cl[i]/cl[i-1]-1);
+  const avg=rets.reduce((a,b)=>a+b,0)/rets.length;
+  const sd=Math.sqrt(rets.reduce((a,b)=>a+(b-avg)**2,0)/rets.length);
+  const volA=sd*Math.sqrt(252)*100;
+  let peak=cl[0], maxDD=0;
+  for(const v of cl){ if(v>peak)peak=v; const dd=(peak-v)/peak*100; if(dd>maxDD)maxDD=dd; }
+  const pos=q.hi52>q.lo52?Math.round((q.price-q.lo52)/(q.hi52-q.lo52)*100):0;
+  const trend=(q.ma20!=null&&q.ma50!=null)?(q.ma20>q.ma50?'多头排列':'空头排列'):'—';
+  const tcol=q.ma20!=null&&q.ma50!=null?(q.ma20>q.ma50?'up':'down'):'';
+  document.getElementById('stats').innerHTML=[
+    ['年化波动率', volA.toFixed(1)+'%', ''],
+    ['最大回撤(1Y)', '-'+maxDD.toFixed(1)+'%', 'down'],
+    ['52周位置', pos+'%', ''],
+    ['均线趋势', trend, tcol],
+    ['RSI14', q.rsi14!=null?q.rsi14.toFixed(1):'—', q.rsi14!=null?(q.rsi14>=70?'up':q.rsi14<=30?'down':''):'']
+  ].map(x=>`<div class="m"><div class="k">${x[0]}</div><div class="v ${x[2]}">${x[1]}</div></div>`).join('');
+  // 通用画图
+  const W=860,H=190,P=8;
+  function fig(el, series){ // series: [{d, color, w, fill}]
+    if(!cl||cl.length<20){document.getElementById(el).innerHTML='<div class="loading">数据不足</div>';return;}
+    let mn=Infinity,mx=-Infinity;
+    series.forEach(sr=>sr.d.forEach(v=>{if(v==null)return;if(v<mn)mn=v;if(v>mx)mx=v;}));
+    const rg=(mx-mn)||1;
+    const X=i=>P+i*(W-2*P)/(cl.length-1), Y=v=>H-P-(v-mn)/rg*(H-2*P);
+    let grid='';for(let g=0;g<4;g++){const y=Y(mn+rg*g/3);grid+=`<line x1="${P}" y1="${y}" x2="${W-P}" y2="${y}" stroke="#1c1f2a" stroke-width="1"/>`;}
+    let html=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}`;
+    series.forEach(sr=>{
+      if(sr.fill){
+        let d=`M${X(0)},${Y(sr.d[0])}`;for(let i=1;i<sr.d.length;i++){if(sr.d[i]==null)continue;d+=` L${X(i)},${Y(sr.d[i])}`;}
+        html+=`<path d="${d} L${X(sr.d.length-1)},${H-P} L${X(0)},${H-P} Z" fill="${sr.fill}"/>`;
+      } else {
+        let d='';sr.d.forEach((v,i)=>{if(v==null)return;d+=(d?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1)+' ';});
+        html+=`<path d="${d}" fill="none" stroke="${sr.color}" stroke-width="${sr.w||1.5}"/>`;
+      }
+    });
+    html+='</svg>';
+    document.getElementById(el).innerHTML=html;
+  }
+  function ema(arr,n){const o=[arr[0]];for(let i=1;i<arr.length;i++)o.push(arr[i]*(2/(n+1))+o[i-1]*(1-2/(n+1)));return o;}
+  // MACD
+  const e12=ema(cl,12), e26=ema(cl,26);
+  const macd=cl.map((_,i)=>e12[i]-e26[i]);
+  const sig=ema(macd,9);
+  const hist=macd.map((v,i)=>v-sig[i]);
+  let hmax=Math.max(...hist.map(Math.abs),0.0001);
+  const bars=hist.map((v,i)=>`<rect x="${P+i*(W-2*P)/(cl.length-1)-0.6}" y="${H/2}" width="1.2" height="${-v/hmax*(H/2-10)}" fill="${v>=0?'#2962ff':'#f23645'}" opacity="0.75"/>`);
+  fig('c-macd',[{d:macd,color:'#2962ff',w:1.6},{d:sig,color:'#d4a853',w:1.2}]);
+  document.querySelector('#c-macd svg').insertAdjacentHTML('beforeend', bars.join(''));
+  // 布林带
+  const m20=[],sd20=[],upb=[],lob=[];
+  for(let i=0;i<cl.length;i++){
+    if(i>=19){const w=cl.slice(i-19,i+1);const a=w.reduce((x,y)=>x+y)/20;const s=Math.sqrt(w.reduce((x,y)=>x+(y-a)**2,0)/20);
+      m20.push(a);sd20.push(s);upb.push(a+2*s);lob.push(a-2*s);}
+    else{m20.push(null);sd20.push(null);upb.push(null);lob.push(null);}
+  }
+  fig('c-boll',[{d:upb,color:'rgba(120,123,134,.5)',w:1},{d:lob,color:'rgba(120,123,134,.5)',w:1},{d:m20,color:'#d4a853',w:1.2},{d:cl,color:'#2962ff',w:2}]);
+  // RSI 历史
+  const rs=[null];
+  for(let i=14;i<cl.length;i++){
+    let g=0,l=0;
+    for(let j=i-13;j<=i;j++){const d=cl[j]-cl[j-1];if(d>0)g+=d;else l-=d;}
+    rs.push(l===0?100:100-100/(1+g/14));
+  }
+  while(rs.length<cl.length)rs.unshift(null);
+  const rlen=rs.length;
+  for(let i=0;i<cl.length-rlen;i++)rs.unshift(null);
+  const rsiFull=new Array(cl.length-rlen).fill(null).concat(rs.slice(0,rlen));
+  fig('c-rsi',[{d:rsiFull.map(v=>v==null?null:70),color:'rgba(242,54,69,.4)',w:1},{d:rsiFull.map(v=>v==null?null:30),color:'rgba(8,153,129,.4)',w:1},{d:rsiFull,color:'#b066ff',w:1.8}]);
+  // 月度
+  const months={};
+  ds.forEach((d,i)=>{const mk=d.slice(0,7);months[mk]=[i,cl[i]];});
+  const mkeys=Object.keys(months).slice(-12);
+  const rows=[];
+  for(let i=0;i<mkeys.length;i++){
+    const mk=mkeys[i], [idx,val]=months[mk];
+    let chg=null;
+    if(i>0){const pv=months[mkeys[i-1]][1];chg=(val/pv-1)*100;}
+    const cls=chg==null?'flat':(chg>0.05?'up':chg<-0.05?'down':'flat');
+    rows.push(`<tr><td>${mk}</td><td>${val.toLocaleString(undefined,{minimumFractionDigits:2})}</td><td><span class="chg ${cls}" style="font-size:11px;padding:1px 6px;border-radius:3px">${chg==null?'—':(chg>=0?'+':'')+chg.toFixed(2)+'%'}</span></td></tr>`);
+  }
+  document.getElementById('t-monthly').innerHTML=rows.reverse().join('');
+}
+document.getElementById('src').textContent='Yahoo Finance · 东方财富 · 更新 '+new Date().toLocaleString('zh-CN');
+</script>
+</body>
+</html>

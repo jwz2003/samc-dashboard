@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{title}} · SAM C 情报终端</title>
 <style>
-:root{--bg:#131722;--panel:#1e222d;--panel2:#242a37;--hover:#2a3040;--line:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--cyan:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+:root{--bg:#000000;--panel:#131722;--panel2:#1a1f2e;--hover:#232833;--line:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--cyan:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:36px}
 .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:9px 18px;background:rgba(19,23,34,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
@@ -35,7 +35,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .tf button.on{background:var(--hover);color:var(--txt);border-color:var(--line2)}
 .loading{color:var(--faint);padding:24px;text-align:center;font-size:12px}
 .errbox{display:none;color:var(--down);background:var(--down-bg);border:1px solid var(--line);border-radius:6px;padding:14px;margin:14px;font-size:12px}
-.chart-box{background:#0e1119;padding:12px 8px 4px}
+.chart-box{background:#000;padding:12px 8px 4px}
 .chart-box svg{width:100%;height:320px;display:block}
 .legend{display:flex;gap:18px;padding:8px 14px;font-size:10.5px;color:var(--dim)}
 .legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
@@ -51,6 +51,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 <body>
 <div class="topbar">
   <a class="back" href="index.html">← 返回</a>
+  <a class="back" id="deep-link" href="#" style="color:var(--gold)">深度分析 →</a>
   <div><span class="sym-big" id="sym">—</span> <span class="name-line" id="name"></span></div>
   <div class="live"><i></i>LIVE</div>
 </div>
@@ -75,6 +76,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
 const s = new URLSearchParams(location.search).get('s');
 const q = (window.QUOTES||{})[s];
+document.getElementById('deep-link').href = 'deep.html?s=' + encodeURIComponent(s);
 document.title = (q? q.short+' · ' : '') + 'SAM C';
 if (!q) {
   document.getElementById('errbox').style.display = 'block';
