@@ -172,7 +172,7 @@ function render(q){
   document.getElementById('t-monthly').innerHTML=rows.reverse().join('');
 }
 (function(){ const sc=document.createElement('script');
-  sc.src='data/'+s.replace(/%/g,'P').replace(/=/g,'E').replace(/\^/g,'C').replace(/\./g,'D').replace(/\//g,'S')+'.js';
+  sc.src='data/'+s.replace(/%/g,'P').replace(/=/g,'E').replace(/\^/g,'C').replace(/\./g,'D').replace(/\//g,'S')+'.js?v='+Date.now();
   sc.onload=function(){ if(window.QUOTE){ render(window.QUOTE); } else { fail('数据文件为空'); } };
   sc.onerror=function(){ fail('数据加载失败：网络问题或数据未生成，请刷新重试'); };
   document.head.appendChild(sc);

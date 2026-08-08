@@ -199,7 +199,7 @@ function fail(m){ var e=$('errbox'); e.style.display='block'; e.textContent=m; $
 function sf(sym){ return sym.replace(/%/g,'P').replace(/=/g,'E').replace(/\^/g,'C').replace(/\./g,'D').replace(/\//g,'S'); }
 function load(sym){
   var sc=document.createElement('script');
-  sc.src='data/'+sf(sym)+'.js';
+  sc.src='data/'+sf(sym)+'.js?v='+Date.now();
   sc.onload=function(){ if(window.QUOTE){ cur=window.QUOTE; render(cur); history.pushState({},'', 'detail.html?s='+encodeURIComponent(sym)); markActive(sym);} else fail('数据文件为空'); };
   sc.onerror=function(){ fail('数据加载失败：网络问题或数据未生成，请刷新重试'); };
   document.head.appendChild(sc);
