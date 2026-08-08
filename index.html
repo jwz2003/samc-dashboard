@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏛️ SAM C · 情报终端</title>
+<style>
+:root{
+  --bg:#131722; --panel:#1e222d; --panel2:#242a37; --hover:#2a3040;
+  --line:#2a2e39; --line2:#363a45;
+  --txt:#d1d4dc; --dim:#787b86; --faint:#5d606b;
+  --cyan:#2962ff; --gold:#d4a853; --up:#f23645; --down:#089981; /* 红涨绿跌 */
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,"JetBrains Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:12px;line-height:1.55;-webkit-font-smoothing:antialiased;padding-bottom:34px}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#363a45;border-radius:4px}::-webkit-scrollbar-track{background:transparent}
+
+/* ── Top bar ── */
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;padding:8px 16px;background:rgba(19,23,34,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.logo{font-size:16px;font-weight:800;letter-spacing:.5px;white-space:nowrap}
+.logo span{color:var(--gold)}
+.brand-sub{font-size:9px;color:var(--faint);letter-spacing:2px;text-transform:uppercase;margin-top:-2px}
+.search{flex:1;max-width:340px;position:relative}
+.search input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--txt);padding:6px 12px;font-size:12px;outline:none}
+.search input:focus{border-color:var(--cyan)}
+.search input::placeholder{color:var(--faint)}
+.live{display:flex;align-items:center;gap:6px;font-size:10px;color:#787b86;letter-spacing:1px;white-space:nowrap}
+.live i{width:6px;height:6px;border-radius:50%;background:var(--down);box-shadow:0 0 6px var(--down);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.tb-date{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap}
+
+/* ── Layout ── */
+.wrap{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:10px;padding:10px 12px;align-items:start}
+@media(max-width:1024px){.wrap{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
+.panel-h{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-weight:700}
+.panel-h .hint{font-weight:400;letter-spacing:0;text-transform:none;color:var(--faint);font-size:10px}
+.panel-b{padding:8px 12px}
+
+/* ── Brief cards (compact) ── */
+.brief{display:grid;grid-template-columns:3px 1fr;border-bottom:1px solid var(--line);transition:background .12s}
+.brief:hover{background:var(--hover)}
+.brief .bar{grid-row:1/4}
+.brief .body{padding:9px 12px 9px 10px}
+.brief.lv-red .bar{background:var(--up)} .brief.lv-yellow .bar{background:var(--gold)} .brief.lv-green .bar{background:var(--down)} .brief.lv-gray .bar{background:var(--faint)}
+.lv-tag{font-size:8.5px;letter-spacing:1px;padding:1px 5px;border-radius:3px;font-weight:800;margin-right:6px;vertical-align:1px}
+.lv-red .lv-tag{background:rgba(242,54,69,.18);color:var(--up)} .lv-yellow .lv-tag{background:rgba(212,168,83,.18);color:var(--gold)} .lv-green .lv-tag{background:rgba(8,153,129,.18);color:var(--down)}
+.brief .t{font-size:12.5px;font-weight:700;margin-bottom:3px}
+.brief .f{font-size:11.5px;color:#b3b8c4}
+.brief .f .src{color:var(--faint)}
+.means{margin-top:5px;font-size:11px;color:#9aa1ad;border-left:2px solid var(--cyan);padding:3px 8px;background:rgba(41,98,255,.06);border-radius:0 4px 4px 0}
+.means b{color:#7db3ff}
+.dec{margin-top:6px;border:1px solid rgba(212,168,83,.28);border-radius:6px;background:rgba(212,168,83,.05);padding:7px 10px;font-size:11px}
+.dec .dh{font-size:9px;letter-spacing:1.5px;color:var(--gold);font-weight:800;margin-bottom:4px}
+.dec .row{margin:2px 0;color:#c4c9d4}
+.dec .row b{color:var(--txt);margin-right:4px}
+.stance{display:inline-block;font-size:9.5px;font-weight:800;padding:1px 7px;border-radius:99px;margin-left:5px;letter-spacing:.5px;vertical-align:1px}
+.st-hold{background:rgba(41,98,255,.16);color:#7db3ff}.st-add{background:rgba(242,54,69,.16);color:var(--up)}.st-cut{background:rgba(212,168,83,.2);color:var(--gold)}.st-watch{background:rgba(120,123,134,.2);color:var(--dim)}
+
+/* ── Lists ── */
+ul.tl{list-style:none}ul.tl li{padding:5px 0 5px 16px;position:relative;font-size:11.5px;color:#b8bdc9;border-bottom:1px dashed rgba(42,46,57,.8)}
+ul.tl li::before{content:"▸";position:absolute;left:2px;color:var(--gold);font-size:9px;top:7px}
+.dec-list li{list-style:none;padding:5px 0 5px 18px;position:relative;font-size:11.5px;color:#c0c5d0;border-bottom:1px dashed rgba(42,46,57,.8)}
+.dec-list li::before{content:"◆";position:absolute;left:2px;color:var(--cyan);font-size:8px;top:8px}
+
+/* ── Hero quotes ── */
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+@media(max-width:600px){.hero{grid-template-columns:1fr}}
+.hero .q{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.q-top{display:flex;justify-content:space-between;align-items:baseline}
+.q-sym{font-family:var(--mono);font-weight:800;font-size:14px;color:#7db3ff}
+.q-name{font-size:10px;color:var(--faint)}
+.q-price{font-family:var(--mono);font-size:26px;font-weight:800;letter-spacing:.5px;margin:4px 0 2px}
+.q-chg{font-family:var(--mono);font-size:12px;font-weight:700}
+.q-meta{display:flex;gap:14px;margin-top:6px;font-size:10px;color:var(--dim);border-top:1px solid var(--line);padding-top:6px}
+.q-meta b{font-family:var(--mono);color:var(--txt);font-weight:600}
+
+/* ── Watchlist table ── */
+table{width:100%;border-collapse:collapse}
+th{font-size:9px;letter-spacing:1px;color:var(--faint);text-align:right;padding:4px 8px;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase;position:sticky;top:0;background:var(--panel)}
+th:first-child,th:nth-child(2){text-align:left}
+td{padding:4px 8px;border-bottom:1px solid rgba(42,46,57,.6);font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td:first-child{text-align:left;font-family:var(--mono);color:#7db3ff;font-size:11px}
+td:nth-child(2){text-align:left;color:var(--dim);font-size:11px;max-width:90px;overflow:hidden;text-overflow:ellipsis}
+tr:hover td{background:var(--hover)}
+tr.group td{font-size:9px;letter-spacing:1.5px;color:var(--faint);padding:5px 8px 2px;border-bottom:none;text-transform:uppercase;text-align:left;background:var(--panel2)}
+.chg{font-family:var(--mono);font-weight:700;font-size:11px;padding:1px 6px;border-radius:4px}
+.up{color:var(--up);background:rgba(242,54,69,.1)}.down{color:var(--down);background:rgba(8,153,129,.1)}.flat{color:var(--dim);background:rgba(120,123,134,.12)}
+.spark{width:64px;height:20px;display:block;margin-left:auto}
+.spark path{fill:none;stroke-width:1.5}
+.spark.up path{stroke:var(--up)}.spark.down path{stroke:var(--down)}.spark.flat path{stroke:var(--faint)}
+td.vol{font-family:var(--mono);font-size:10px;color:var(--faint)}
+
+/* ── News feed ── */
+.news{max-height:280px;overflow-y:auto}
+.news a{display:block;padding:5px 4px;color:#b8bdc9;text-decoration:none;font-size:11.5px;border-bottom:1px dashed rgba(42,46,57,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.news a:hover{color:#7db3ff;background:var(--hover)}
+.news .src{color:var(--faint);font-size:9.5px;margin-left:6px}
+
+/* ── DXI ── */
+.dxi-val{font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:1px}
+.dxi-sub{font-size:10.5px;color:var(--dim);margin-left:10px}
+.chart-box{background:#0e1119;border:1px solid var(--line);border-radius:6px;margin-top:6px;padding:6px 4px 2px}
+.chart-box svg{width:100%;height:90px;display:block}
+.empty{color:var(--faint);font-style:italic;font-size:11px;padding:8px 2px}
+
+/* ── Status bar ── */
+.statusbar{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 16px;background:rgba(19,23,34,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
+.statusbar .srcs{display:flex;gap:12px;overflow:hidden;white-space:nowrap}
+.statusbar .ok::before{content:"●";color:var(--down);margin-right:4px;font-size:8px}
+.statusbar .bad::before{content:"●";color:var(--up);margin-right:4px;font-size:8px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="logo">SAM C <span>·</span> 情报终端</div>
+    <div class="brand-sub">Storage &amp; Semiconductor Intelligence Terminal</div>
+  </div>
+  <div class="search"><input id="q" type="text" placeholder="搜索标的 (MU / 兆易创新 / SOX)…" autocomplete="off"></div>
+  <div class="tb-date">AUG 08, 2026 · SATURDAY · 2026年8月8日 星期六</div>
+  <div class="live"><i></i>LIVE</div>
+</div>
+
+<div class="wrap">
+
+  <!-- ── 左列：简报 ── -->
+  <div>
+    <div class="panel">
+      <div class="panel-h"><span>Ⅰ · 最高优先级情报</span><span class="hint">分级 · 决策方案 · 模拟场景</span></div>
+      <div><div class="brief lv-red"><div class="t"><span class="lv-tag">CRITICAL</span>[🔴]</div><div class="f">SK海力士董事会 8 月 7 日决议，向龙仁 Y2 投资 35.2 万亿韩元、清州 M17 投资 19.1 万亿韩元，合计约 54 万亿韩元 [CFM闪存市场|2026-08-07|chinaflashmarket.com/a/184162][披露]。Y2 总建面约 113 万平方米，定位 DRAM/HBM 生产基地，计划 2027 年 7 月开工、2029 年 6 月启用首个无尘室；Y1 预计 2027 年 2 月启用首个无尘室 [CFM闪存市场|2026-08-07|/a/184162][披露]。Omdia 预测 2025-2030 年 DRAM/NAND 需求年均增速 19% [CFM转引Omdia|2026-08-07|/a/184162][券商]。
+-</div><div class="means"><b>对你意味着</b>　数据库&quot;原厂扩产&quot;四层结构需新增 Y2/M17 节点；扩产公告是周期见顶先行信号，但产能落地在 2029 年，属远端供给，短中期紧缺逻辑未破坏。
+- 🎯 决策方案（假设持有 SK海力士 000660.KS / 美光MU）：
+  - 立场：持有（不加仓）
+  - 具体动作：现有仓位继续持有；不因扩产公告减仓（产能在 2029 年后），但也不追高加仓
+  - 关键信号/触发条件：若三星/美光在 90 天内跟进公布同等规模扩产（合计行业新增 &gt;100 万亿韩元级），则视为周期见顶先行信号确认，减仓 1/3
+  - 风险提示：若 AI 需求增速低于 Omdia 的 19% CAGR 假设，2029 年新产能投产时恰逢需求回落，形成供给过剩</div><div class="dec"><div class="dh">🎯 决策方案 <span style="float:right;font-weight:400">模拟场景 · 假设持有</span></div><div class="row"><b>立场</b> <span class="stance st-hold">持有</span> 持有（不加仓）</div>
+<div class="row"><b>动作</b> 现有仓位继续持有；不因扩产公告减仓（产能在 2029 年后），但也不追高加仓</div>
+<div class="row"><b>信号</b> 若三星/美光在 90 天内跟进公布同等规模扩产（合计行业新增 &gt;100 万亿韩元级），则视为周期见顶先行信号确认，减仓 1/3</div>
+<div class="row"><b>风险</b> 若 AI 需求增速低于 Omdia 的 19% CAGR 假设，2029 年新产能投产时恰逢需求回落，形成供给过剩</div></div></div>
+<div class="brief lv-red"><div class="t"><span class="lv-tag">CRITICAL</span>[🔴]</div><div class="f">TrendForce 称 DRAM 供给 2027 全年维持紧张，HBM4e 验证时程不确定，NVIDIA 自 3Q26 起将 Rubin Ultra 的 HBM 配置从原 12-Hi HBM4e 基准，扩展评估 8-Hi HBM4e、12-Hi HBM4、8-Hi HBM4 替代方案；多家 CSP 自研 ASIC 也在评估降低 HBM 容量；NVIDIA 已将 Vera Rubin Superchip 的 SOCAMM 容量减半（LPDDR5X 紧缺或持续至 2027）[TrendForce|2026-08-04|trendforce.com/presscenter/news/20260804-13166.html][券商]。
+-</div><div class="means"><b>对你意味着</b>　&quot;缺货→降配&quot;是需求侧被迫适应供给约束的标志，支撑 DRAM/HBM 价格周期&quot;加速段&quot;判断；数据库可记录 HBM4e 验证进度为 HBM 层关键变量。
+- 🎯 决策方案（假设持有美光MU / SK海力士）：
+  - 立场：持有，回调加仓
+  - 具体动作：持有者继续持有；8 月 6 日美光跌超 1%、SK海力士跌超 4% [CFM快讯|2026-08-07|chinaflashmarket.com首页快讯][媒体]，若为大盘拖累而非基本面恶化，可在企稳后小幅加仓
+  - 关键信号/触发条件：若 HBM4e 验证通过且 NVIDIA 恢复 12-Hi 满配，说明供给瓶颈缓解，周期进入后段，减半仓；若现货价连续 2 周环比转跌，减仓至半仓
+  - 风险提示：降配意味着单 AI 芯片 HBM 用量下降，若成为行业趋势，HBM 总需求增速被摊薄</div><div class="dec"><div class="dh">🎯 决策方案 <span style="float:right;font-weight:400">模拟场景 · 假设持有</span></div><div class="row"><b>立场</b> <span class="stance st-hold">持有</span> 持有，回调加仓</div>
+<div class="row"><b>动作</b> 持有者继续持有；8 月 6 日美光跌超 1%、SK海力士跌超 4% [CFM快讯|2026-08-07|chinaflashmarket.com首页快讯][媒体]，若为大盘拖累而非基本面恶化，可在企稳后小幅加仓</div>
+<div class="row"><b>信号</b> 若 HBM4e 验证通过且 NVIDIA 恢复 12-Hi 满配，说明供给瓶颈缓解，周期进入后段，减半仓；若现货价连续 2 周环比转跌，减仓至半仓</div>
+<div class="row"><b>风险</b> 降配意味着单 AI 芯片 HBM 用量下降，若成为行业趋势，HBM 总需求增速被摊薄</div></div></div>
+<div class="brief lv-yellow"><div class="t"><span class="lv-tag">IMPORTANT</span>[🟡]</div><div class="f">华邦 2Q26 合并营收 598.43 亿元新台币（同比 +184.7%），毛利率 66.2%，税后净利 243.17 亿元新台币（同比 +256 倍），EPS 5.4 元新台币；总经理陈沛铭预计本季 DRAM 价格继续上扬、Flash 同步调涨；公司称 DRAM 紧缺延续至 2027 且明年缺口或扩大，长约占比已达五成；部分 AI 推理客户因拿不到 DRAM 被迫降配 [CFM闪存市场|2026-08-07|chinaflashmarket.com/a/184164][披露]。
+-</div><div class="means"><b>对你意味着</b>　利基型 DRAM 厂商业绩兑现验证涨价周期深度；长约占比五成=现货/合约联动强化，数据库&quot;合约vs现货&quot;字段需标注该结构性变化。
+- 🎯 决策方案（假设持有存储链现货库存/兆易创新603986）：
+  - 立场：持有
+  - 具体动作：利基 DRAM/利基存储标的持有；库存类资产顺周期持有不抛
+  - 关键信号/触发条件：若华邦/南亚科下季法说会指引&quot;价格涨幅环比收窄至 &lt;5%&quot;，视周期进入见顶段，启动分批兑现
+  - 风险提示：利基厂商对周期反转最敏感，反转时回撤幅度大于原厂</div><div class="dec"><div class="dh">🎯 决策方案 <span style="float:right;font-weight:400">模拟场景 · 假设持有</span></div><div class="row"><b>立场</b> <span class="stance st-hold">持有</span> 持有</div>
+<div class="row"><b>动作</b> 利基 DRAM/利基存储标的持有；库存类资产顺周期持有不抛</div>
+<div class="row"><b>信号</b> 若华邦/南亚科下季法说会指引&quot;价格涨幅环比收窄至 &lt;5%&quot;，视周期进入见顶段，启动分批兑现</div>
+<div class="row"><b>风险</b> 利基厂商对周期反转最敏感，反转时回撤幅度大于原厂</div></div></div>
+<div class="brief lv-yellow"><div class="t"><span class="lv-tag">IMPORTANT</span>[🟡]</div><div class="f">CFM 预计 Q4 消费级 NAND Flash 及 SSD 合约价上涨动能基本枯竭；7 月以来多品牌 eMMC 低价走货，现货与合约明显倒挂，64GB eMMC 现货价已率先松动下行；手机厂商被迫精简产品线/下调存储配置/提价；QLC SSD 加速替代大容量 TLC SSD 抑制合约价上涨 [CFM闪存市场|2026-08-05|chinaflashmarket.com/a/184152][媒体]。TrendForce 亦判断 2027 年 DRAM 紧、NAND 供给转松的分化格局 [TrendForce|2026-07-30|trendforce.com/presscenter/news/20260730-13158.html][券商]。
+-</div><div class="means"><b>对你意味着</b>　现货-合约倒挂=拐点预警框架中的明确信号，但仅局限消费级 NAND；DRAM/企业级仍紧，板块内部剧烈分化。
+- 🎯 决策方案（假设持有江波龙301308 / 消费级 NAND 库存）：
+  - 立场：减仓消费级、保留企业级敞口
+  - 具体动作：消费级 NAND/eMMC 相关敞口减仓 1/3；若组合中有企业级 SSD/DRAM 敞口则保留
+  - 关键信号/触发条件：若 eMMC 现货倒挂幅度连续 2 周扩大（更多容量段跌破官价），消费级敞口再减至底仓；若 Q4 合约价实际仍环比上涨，则回补
+  - 风险提示：原厂灵活调配 NAND 产能投放可能快速修复供需，减仓后踏空 Q4 旺季反弹
+
+---</div><div class="dec"><div class="dh">🎯 决策方案 <span style="float:right;font-weight:400">模拟场景 · 假设持有</span></div><div class="row"><b>立场</b> <span class="stance st-cut">减仓</span> 减仓消费级、保留企业级敞口</div>
+<div class="row"><b>动作</b> 消费级 NAND/eMMC 相关敞口减仓 1/3；若组合中有企业级 SSD/DRAM 敞口则保留</div>
+<div class="row"><b>信号</b> 若 eMMC 现货倒挂幅度连续 2 周扩大（更多容量段跌破官价），消费级敞口再减至底仓；若 Q4 合约价实际仍环比上涨，则回补</div>
+<div class="row"><b>风险</b> 原厂灵活调配 NAND 产能投放可能快速修复供需，减仓后踏空 Q4 旺季反弹</div></div></div></div>
+    </div>
+    <div class="hero"><div class="q"><div class="q-top"><span class="q-sym">%5ESOX</span><span class="q-name">费城半导体指数</span></div><div class="q-price">12,356.79</div><div class="q-chg up">+2.56%</div><div class="q-meta"><span>52周高 <b>14,635</b></span><span>52周低 <b>5,593</b></span><span>量 <b>—</b></span></div></div><div class="q"><div class="q-top"><span class="q-sym">MU</span><span class="q-name">美光 Micron</span></div><div class="q-price">877.57</div><div class="q-chg down">-0.44%</div><div class="q-meta"><span>52周高 <b>1,214</b></span><span>52周低 <b>116</b></span><span>量 <b>33.9M</b></span></div></div></div>
+    <div class="panel">
+      <div class="panel-h"><span>Ⅵ · 今日决策清单</span></div>
+      <div class="panel-b"><ul class="dec-list"><li>SK海力士/美光：持有；90 天内若无第二家原厂同等规模扩产公告，维持仓位（扩产=远端供给，非即期信号）</li>
+<li>美光/海力士回调企稳后可小幅加仓；HBM4e 验证通过+NVIDIA 恢复满配 → 减半仓</li>
+<li>利基存储（华邦链/兆易）：持有；下季法说价格指引涨幅 &lt;5% → 分批兑现</li>
+<li>消费级 NAND 敞口（江波龙等）：减仓 1/3；eMMC 倒挂连续 2 周扩大 → 减至底仓</li>
+<li>人工核实：DXI 数值、WDC -13% 原因、iPhone 延期传闻</li></ul></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><span>Ⅳ · 时间线 &amp; 待核实</span></div>
+      <div class="panel-b"><ul class="tl"><li> SK海力士 2026 Q2 财报、三星电子 2026 Q2 财报、铠侠 2026 财年第一财季报告均已发布（CFM 设有财报专页，内容需登录）[CFM闪存市场|2026-08|chinaflashmarket.com][披露]。</li>
+<li> 媒体称台积电因 DRAM 缺货积压约 10 亿美元 A20 Pro CPU 模块，iPhone 18 Pro/Pro Max 发布或延期 [CFM转引媒体|2026-08-06|chinaflashmarket.com首页快讯区][媒体]——单一媒体来源，未经台积电/苹果证实。</li>
+<li> 其余：无已知事件。</li></ul></div>
+    </div>
+  </div>
+
+  <!-- ── 右列：行情 ── -->
+  <div>
+    <div class="panel">
+      <div class="panel-h"><span>全球存储链行情</span><span class="hint">点击行可搜索</span></div>
+      <table id="watchlist">
+        <thead><tr><th>代码</th><th>名称</th><th>价格</th><th>涨跌</th><th>量</th><th>5日</th></tr></thead>
+        <tbody><tr class="group"><td colspan="6">存储 · 美股/韩股</td></tr>
+<tr><td>SOX</td><td>费城半导体</td><td>12,356.79</td><td><span class="chg up">+2.56%</span></td><td class="vol">—</td><td><svg class="spark up" viewBox="0 0 70 22"><path d="M2.0,20.0 L18.5,5.4 L35.0,8.8 L51.5,8.0 L68.0,2.0"/></svg></td></tr>
+<tr><td>MU</td><td>美光</td><td>877.57</td><td><span class="chg down">-0.44%</span></td><td class="vol">33.9M</td><td><svg class="spark up" viewBox="0 0 70 22"><path d="M2.0,20.0 L18.5,2.1 L35.0,2.0 L51.5,5.3 L68.0,6.4"/></svg></td></tr>
+<tr><td>WDC</td><td>西部数据</td><td>434.30</td><td><span class="chg down">-3.81%</span></td><td class="vol">11.6M</td><td><svg class="spark down" viewBox="0 0 70 22"><path d="M2.0,5.4 L18.5,2.0 L35.0,6.6 L51.5,17.3 L68.0,20.0"/></svg></td></tr>
+<tr><td>NVDA</td><td>英伟达</td><td>223.96</td><td><span class="chg up">+2.27%</span></td><td class="vol">104.7M</td><td><svg class="spark up" viewBox="0 0 70 22"><path d="M2.0,20.0 L18.5,14.5 L35.0,6.9 L51.5,7.2 L68.0,2.0"/></svg></td></tr>
+<tr><td>AMD</td><td>AMD</td><td>483.36</td><td><span class="chg down">-1.21%</span></td><td class="vol">25.5M</td><td><svg class="spark down" viewBox="0 0 70 22"><path d="M2.0,18.7 L18.5,2.0 L35.0,20.0 L51.5,16.4 L68.0,19.4"/></svg></td></tr>
+<tr><td>Hynix</td><td>SK海力士</td><td>1,422,000.00</td><td><span class="chg down">-4.88%</span></td><td class="vol">5.3M</td><td><svg class="spark down" viewBox="0 0 70 22"><path d="M2.0,9.4 L18.5,8.7 L35.0,2.0 L51.5,14.7 L68.0,20.0"/></svg></td></tr>
+<tr><td>Samsung</td><td>三星</td><td>231,000.00</td><td><span class="chg up">+0.22%</span></td><td class="vol">20.5M</td><td><svg class="spark down" viewBox="0 0 70 22"><path d="M2.0,9.5 L18.5,9.0 L35.0,2.0 L51.5,20.0 L68.0,19.4"/></svg></td></tr>
+<tr class="group"><td colspan="6">宏观</td></tr>
+<tr><td>SPY</td><td>标普500</td><td>773.26</td><td><span class="chg up">+0.61%</span></td><td class="vol">42.7M</td><td><svg class="spark up" viewBox="0 0 70 22"><path d="M2.0,20.0 L18.5,4.2 L35.0,6.0 L51.5,7.4 L68.0,2.0"/></svg></td></tr>
+<tr><td>QQQ</td><td>纳指100</td><td>723.03</td><td><span class="chg up">+1.17%</span></td><td class="vol">29.2M</td><td><svg class="spark up" viewBox="0 0 70 22"><path d="M2.0,20.0 L18.5,2.0 L35.0,7.0 L51.5,9.0 L68.0,2.6"/></svg></td></tr>
+<tr><td>VIX</td><td>恐慌指数</td><td>14.90</td><td><span class="chg down">-1.65%</span></td><td class="vol">—</td><td><svg class="spark down" viewBox="0 0 70 22"><path d="M2.0,9.2 L18.5,2.0 L35.0,9.8 L51.5,17.2 L68.0,20.0"/></svg></td></tr>
+<tr><td>TNX</td><td>美债10Y</td><td>4.66</td><td><span class="chg down">-0.21%</span></td><td class="vol">—</td><td><svg class="spark down" viewBox="0 0 70 22"><path d="M2.0,2.0 L18.5,17.4 L35.0,20.0 L51.5,6.2 L68.0,8.8"/></svg></td></tr>
+<tr><td>DXY</td><td>美元指数</td><td>99.60</td><td><span class="chg down">-0.37%</span></td><td class="vol">—</td><td><svg class="spark down" viewBox="0 0 70 22"><path d="M2.0,2.5 L18.5,5.9 L35.0,15.6 L51.5,2.0 L68.0,20.0"/></svg></td></tr>
+<tr class="group"><td colspan="6">A股存储链 · 前一交易日收盘</td></tr>
+<tr><td>603986</td><td>兆易创新</td><td>417.05</td><td><span class="chg up">+8.32%</span></td><td class="vol">—</td><td></td></tr>
+<tr><td>301308</td><td>江波龙</td><td>386.60</td><td><span class="chg up">+5.53%</span></td><td class="vol">—</td><td></td></tr>
+<tr><td>688525</td><td>佰维存储</td><td>244.88</td><td><span class="chg up">+5.13%</span></td><td class="vol">—</td><td></td></tr>
+<tr><td>001309</td><td>德明利</td><td>404.16</td><td><span class="chg up">+4.10%</span></td><td class="vol">—</td><td></td></tr>
+<tr><td>688008</td><td>澜起科技</td><td>215.52</td><td><span class="chg up">+3.44%</span></td><td class="vol">—</td><td></td></tr>
+<tr><td>000021</td><td>深科技</td><td>40.85</td><td><span class="chg up">+2.36%</span></td><td class="vol">—</td><td></td></tr></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><span>今日要闻流</span><span class="hint">CFM · TrendForce</span></div>
+      <div class="news" id="news"><a href="https://www.chinaflashmarket.com/" target="_blank">华邦电子：DRAM紧缺至2027年，长约占比已达五成<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">SK海力士投资54万亿韩元建设龙仁Y2与清州M17晶圆厂，确保中长期生产基础<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">FADU 开启SSD主控直供模式，剑指全球超算巨头<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">数据中心营收占比跃升至58%！AMD全面上修长期财务指引，2027年该板块营收将翻倍<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">CFM：存储成本飙升抑制终端需求，四季度消费级NAND行情恐承压<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">铠侠与闪迪联合发布332层QLC：位密度突破37Gb/mm²<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">Marvell发布 PCIe Gen6 SSD主控：性能翻倍，Q4送样<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">SK海力士2026年第二季度财报<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">三星电子2026年第二季度财报<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">铠侠2026财年第一财季业绩报告<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">朗科科技2026年第一季度报告<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">通富微电2026年第一季度报告<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">SPHBM4规范接近完成：I/O 引脚数量仅标准HBM4的1/4<span class="src">CFM</span></a>
+<a href="https://www.chinaflashmarket.com/" target="_blank">CXL 4.0 规范发布：基于 PCIe 7.0，数据传输速率达128GT/s<span class="src">CFM</span></a></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><span>DXI 现货指数</span></div>
+      <div class="panel-b">
+        <span class="dxi-val">—</span><span class="dxi-sub">未披露</span>
+        <div class="chart-box"><div class="empty">等待首次周快照（每周日 20:30 生成）</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><span>台厂月营收</span></div>
+      <div class="panel-b"><div class="empty">等待首次月营收（每月 8 日生成）</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="statusbar">
+  <div class="srcs">
+    <span class="ok">CFM</span><span class="ok">TrendForce</span><span class="ok">集微网</span>
+    <span class="ok">Yahoo</span><span class="ok">东方财富</span><span class="bad">DRAMeXchange*</span>
+  </div>
+  <div>UPDATED 2026-08-08 19:19 · 仅供个人研究 · 模拟决策不构成投资建议</div>
+</div>
+
+<script>
+// 搜索过滤 watchlist
+const q = document.getElementById('q');
+q.addEventListener('input', () => {
+  const k = q.value.trim().toLowerCase();
+  document.querySelectorAll('#watchlist tbody tr').forEach(tr => {
+    if (tr.classList.contains('group')) return;
+    tr.style.display = tr.textContent.toLowerCase().includes(k) ? '' : 'none';
+  });
+});
+</script>
+</body>
+</html>
