@@ -451,10 +451,10 @@ DETAIL_TEMPLATE = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{title}} · SAM C 情报终端</title>
 <style>
-:root{--bg:#000000;--panel:#131722;--panel2:#1a1f2e;--hover:#232833;--line:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--cyan:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+:root{--bg:#000;--panel:#0a0a0c;--panel2:#101014;--hover:#16161c;--line:#1c1f24;--line2:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--cyan:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:36px}
-.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:9px 18px;background:rgba(19,23,34,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:9px 18px;background:#050507;border-bottom:1px solid var(--line)}
 .back{color:var(--dim);text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:6px}
 .back:hover{color:var(--txt);border-color:var(--line2)}
 .sym-big{font-family:var(--mono);font-size:20px;font-weight:800;color:#7db3ff}
@@ -517,7 +517,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   </div>
 </div>
 <div class="statusbar"><span id="src"></span><span>仅供个人研究 · 模拟决策不构成投资建议</span></div>
-<script src="data.js"></script>
+{{data_js}}
 <script>
 window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
 const s = new URLSearchParams(location.search).get('s');
@@ -588,10 +588,10 @@ DEEP_TEMPLATE = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{title}} · 深度分析 · SAM C</title>
 <style>
-:root{--bg:#000;--panel:#131722;--panel2:#1a1f2e;--hover:#232833;--line:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--blue:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+:root{--bg:#000;--panel:#0a0a0c;--panel2:#101014;--hover:#16161c;--line:#1c1f24;--line2:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--blue:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:12px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:34px}
-.topbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:14px;padding:8px 16px;background:#0a0a0c;border-bottom:1px solid var(--line)}
+.topbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:14px;padding:8px 16px;background:#050507;border-bottom:1px solid var(--line)}
 .back{color:var(--dim);text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:4px}
 .back:hover{color:var(--txt);border-color:var(--line2)}
 .sym-big{font-family:var(--mono);font-size:19px;font-weight:800;color:#7db3ff}
@@ -622,7 +622,7 @@ td:first-child{text-align:left;color:var(--dim)}
 tr:hover td{background:var(--hover)}
 .loading{color:var(--faint);padding:20px;text-align:center}
 .errbox{display:none;color:var(--down);background:rgba(242,54,69,.1);border:1px solid var(--line);border-radius:4px;padding:12px;margin:12px;font-size:12px}
-.statusbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:4px 16px;background:#0a0a0c;border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
+.statusbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:4px 16px;background:#050507;border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
 </style>
 </head>
 <body>
@@ -655,7 +655,7 @@ tr:hover td{background:var(--hover)}
   </div>
 </div>
 <div class="statusbar"><span id="src"></span><span>仅供个人研究</span></div>
-<script src="data.js"></script>
+{{data_js}}
 <script>
 window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
 const s = new URLSearchParams(location.search).get('s');
@@ -801,16 +801,18 @@ def main():
         "{{dxi_chart}}": dxi_svg, "{{dxi_value}}": dxi_val, "{{dxi_sub}}": dxi_sub,
         "{{revenue_table}}": revenue_table_html(),
         "{{updated_at}}": now.strftime("%Y-%m-%d %H:%M"),
+        "{{data_js}}": f"<script src=\"data.js?v={now.strftime('%Y%m%d%H%M')}\"></script>",
     }
     tpl = open(os.path.join(BASE, "template.html"), encoding="utf-8").read()
     for k, v in repl.items():
         tpl = tpl.replace(k, v)
     open(os.path.join(BASE, "index.html"), "w", encoding="utf-8").write(tpl)
 
+    dj = f"<script src=\"data.js?v={now.strftime('%Y%m%d%H%M')}\"></script>"
     # detail.html
-    open(os.path.join(BASE, "detail.html"), "w", encoding="utf-8").write(DETAIL_TEMPLATE)
+    open(os.path.join(BASE, "detail.html"), "w", encoding="utf-8").write(DETAIL_TEMPLATE.replace("{{data_js}}", dj))
     # deep.html
-    open(os.path.join(BASE, "deep.html"), "w", encoding="utf-8").write(DEEP_TEMPLATE)
+    open(os.path.join(BASE, "deep.html"), "w", encoding="utf-8").write(DEEP_TEMPLATE.replace("{{data_js}}", dj))
 
     print(f"✅ 终端已更新 {now.strftime('%Y-%m-%d %H:%M')} · {len(quotes)} 标的 · index/detail/data.js 已生成")
 

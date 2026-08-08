@@ -6,8 +6,8 @@
 <title>Market Watch · SAM C</title>
 <style>
 :root{
-  --bg:#000000; --panel:#131722; --panel2:#1a1f2e; --hover:#232833;
-  --line:#2a2e39; --line2:#363a45;
+  --bg:#000000; --panel:#0a0a0c; --panel2:#101014; --hover:#16161c;
+  --line:#1c1f24; --line2:#2a2e39;
   --txt:#d1d4dc; --dim:#787b86; --faint:#5d606b;
   --blue:#2962ff; --gold:#d4a853;
   --up:#089981; --up-bg:rgba(8,153,129,.12); --down:#f23645; --down-bg:rgba(242,54,69,.12);
@@ -192,7 +192,7 @@ td.vol{font-family:var(--mono);font-size:10px;color:var(--faint)}
   <div>{{date_cn}} · UPDATED {{updated_at}} · 仅供个人研究</div>
 </div>
 
-<script src="data.js"></script>
+{{data_js}}
 <script>
 // 情报面板折叠
 const sb = document.getElementById('sidebar');

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{title}} · 深度分析 · SAM C</title>
 <style>
-:root{--bg:#000;--panel:#131722;--panel2:#1a1f2e;--hover:#232833;--line:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--blue:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+:root{--bg:#000;--panel:#0a0a0c;--panel2:#101014;--hover:#16161c;--line:#1c1f24;--line2:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--blue:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:12px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:34px}
-.topbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:14px;padding:8px 16px;background:#0a0a0c;border-bottom:1px solid var(--line)}
+.topbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:14px;padding:8px 16px;background:#050507;border-bottom:1px solid var(--line)}
 .back{color:var(--dim);text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:4px}
 .back:hover{color:var(--txt);border-color:var(--line2)}
 .sym-big{font-family:var(--mono);font-size:19px;font-weight:800;color:#7db3ff}
@@ -39,7 +39,7 @@ td:first-child{text-align:left;color:var(--dim)}
 tr:hover td{background:var(--hover)}
 .loading{color:var(--faint);padding:20px;text-align:center}
 .errbox{display:none;color:var(--down);background:rgba(242,54,69,.1);border:1px solid var(--line);border-radius:4px;padding:12px;margin:12px;font-size:12px}
-.statusbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:4px 16px;background:#0a0a0c;border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
+.statusbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:4px 16px;background:#050507;border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
 </style>
 </head>
 <body>
@@ -72,7 +72,7 @@ tr:hover td{background:var(--hover)}
   </div>
 </div>
 <div class="statusbar"><span id="src"></span><span>仅供个人研究</span></div>
-<script src="data.js"></script>
+<script src="data.js?v=202608082005"></script>
 <script>
 window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
 const s = new URLSearchParams(location.search).get('s');
