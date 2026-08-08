@@ -29,6 +29,11 @@ ALL_SYMS = [
     ("000001.SS", "SSE", "上证指数", "全球大盘"), ("%5EN225", "N225", "日经225", "全球大盘"),
     ("%5EKS11", "KOSPI", "韩国综合", "全球大盘"), ("%5EGSPC", "SPX", "标普500", "全球大盘"),
     ("%5ETWII", "TWII", "台湾加权", "全球大盘"), ("%5EHSI", "HSI", "恒生指数", "全球大盘"),
+    ("399001.SZ", "SZSE", "深证成指", "全球大盘"), ("%5EDJI", "DJI", "道琼斯", "全球大盘"),
+    ("000688.SS", "STAR", "科创50", "科技指数"), ("399006.SZ", "ChiNext", "创业板指", "科技指数"),
+    ("%5ETELI", "TELI", "台湾电子", "科技指数"), ("%5ENDX", "NDX", "纳斯达克100", "科技指数"),
+    ("%5EIXIC", "IXIC", "纳斯达克综指", "科技指数"), ("%5EKQ11", "KQ11", "KOSDAQ", "科技指数"),
+    ("3033.HK", "HSTECH", "恒生科技", "科技指数"),
     ("CL=F", "WTI", "WTI原油", "能源"), ("BZ=F", "Brent", "布伦特原油", "能源"),
     ("NG=F", "NG", "天然气", "能源"),
     ("GC=F", "Gold", "黄金", "贵金属"), ("SI=F", "Silver", "白银", "贵金属"),
@@ -51,6 +56,9 @@ NEWS_Q = {
     "ZNC=F": "zinc price", "0NI=F": "nickel price", "TIO=F": "iron ore price",
     "000001.SS": "上证指数 A股", "%5EN225": "Nikkei 225", "%5EKS11": "KOSPI index",
     "%5EGSPC": "S&P 500 index", "%5ETWII": "Taiwan stock index", "%5EHSI": "Hang Seng index",
+    "399001.SZ": "深证成指", "%5EDJI": "Dow Jones", "000688.SS": "科创50",
+    "399006.SZ": "创业板指", "%5ETELI": "Taiwan electronics index", "%5ENDX": "Nasdaq 100",
+    "%5EIXIC": "Nasdaq composite", "%5EKQ11": "KOSDAQ index", "3033.HK": "恒生科技ETF",
 }
 
 def fmt_vol(v):
@@ -164,13 +172,13 @@ def build_quote(item):
 def market_rows_html(quotes):
     groups = []
     for q in quotes:
-        if q["group"] not in groups and q["group"] != "全球大盘":
+        if q["group"] not in groups and q["group"] not in ("全球大盘", "科技指数"):
             groups.append(q["group"])
     out = []
     for g in groups:
         out.append(f'<tr class="group" data-g="{g}"><td colspan="6">{g}</td></tr>')
         for q in quotes:
-            if q["group"] != g or q["group"] == "全球大盘":
+            if q["group"] != g or q["group"] in ("全球大盘", "科技指数"):
                 continue
             closes = q["closes"][-5:]
             sp = sparkline(closes)
@@ -181,7 +189,7 @@ def market_rows_html(quotes):
     return "\n".join(out)
 
 def index_charts_html(quotes):
-    idx = [q for q in quotes if q["group"] == "全球大盘"]
+    idx = [q for q in quotes if q["group"] in ("全球大盘", "科技指数")]
     cards = []
     for q in idx:
         closes = q.get("closes") or []
@@ -582,7 +590,7 @@ def main():
         "{{hero_quotes}}": hero_quotes_html(quotes),
         "{{idx_cards}}": index_charts_html(quotes),
         "{{market_rows}}": market_rows_html(quotes),
-        "{{market_count}}": str(len(quotes) - sum(1 for q in quotes if q["group"] == "全球大盘")),
+        "{{market_count}}": str(len(quotes) - sum(1 for q in quotes if q["group"] in ("全球大盘", "科技指数"))),
         "{{news_items}}": news_items_html(),
         "{{dxi_chart}}": dxi_svg, "{{dxi_value}}": dxi_val, "{{dxi_sub}}": dxi_sub,
         "{{revenue_table}}": revenue_table_html(),
