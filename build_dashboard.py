@@ -72,6 +72,12 @@ def fmt_vol(v):
         return f"{v/1e3:.0f}K"
     return str(v)
 
+def sym_fn(sym):
+    """标的代码 → 安全文件名（与前端 JS 同规则）"""
+    for a, b in (("%", "P"), ("=", "E"), ("^", "C"), (".", "D"), ("/", "S")):
+        sym = sym.replace(a, b)
+    return sym
+
 def rsi(closes, n=14):
     if len(closes) < n + 1:
         return None
@@ -100,9 +106,16 @@ def fetch_yahoo(sym):
     r = d["chart"]["result"][0]
     m = r["meta"]
     q = r["indicators"]["quote"][0]
-    closes = [c for c in q.get("close", []) if c is not None]
-    if not closes:
+    raw_c = q.get("close", [])
+    idx = [i for i, c in enumerate(raw_c) if c is not None]
+    if not idx:
         return None
+    closes = [raw_c[i] for i in idx]
+    o = q.get("open", []); h = q.get("high", []); l = q.get("low", [])
+    ohlc = [[o[i] if i < len(o) and o[i] is not None else raw_c[i],
+             h[i] if i < len(h) and h[i] is not None else raw_c[i],
+             l[i] if i < len(l) and l[i] is not None else raw_c[i],
+             raw_c[i]] for i in idx]
     ts = r.get("timestamp", [])[:len(closes)]
     dates = [datetime.datetime.fromtimestamp(t, datetime.UTC).strftime("%Y-%m-%d") for t in ts]
     price = m.get("regularMarketPrice") or closes[-1]
@@ -119,26 +132,28 @@ def fetch_yahoo(sym):
         "vol": fmt_vol(m.get("regularMarketVolume")), "vol_raw": m.get("regularMarketVolume"),
         "hi52": max(closes), "lo52": min(closes), "ytd": ytd,
         "ma20": ma(closes, 20), "ma50": ma(closes, 50), "rsi14": rsi(closes),
-        "closes": closes, "dates": dates,
+        "closes": closes, "dates": dates, "ohlc": ohlc,
+        "exch": m.get("fullExchangeName") or m.get("exchangeName") or "",
     }
 
 def fetch_cn_quote(secid, code):
     """A股：东方财富 1 年日线 → 同结构 dict"""
-    raw = curl(f"https://push2his.eastmoney.com/api/qt/stock/kline/get?secid={secid}&klt=101&fqt=1&lmt=250&end=20500101&fields1=f1,f2,f3&fields2=f51,f53")
+    raw = curl(f"https://push2his.eastmoney.com/api/qt/stock/kline/get?secid={secid}&klt=101&fqt=1&lmt=250&end=20500101&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55")
     d = json.loads(raw) if raw else {}
     if not isinstance(d, dict) or not d.get("data"):
         return None
     klines = d.get("data", {}).get("klines", [])
     if not klines:
         return None
-    closes = [float(k.split(",")[-1]) for k in klines]
+    closes = [float(k.split(",")[2]) for k in klines]
     dates = [k.split(",")[0] for k in klines]
+    ohlc = [[float(p[1]), float(p[3]), float(p[4]), float(p[2])] for p in (k.split(",") for k in klines)]
     price, prev = closes[-1], closes[-2]
     return {
         "price": price, "prev": prev, "chg": (price / prev - 1) * 100, "cur": "CNY",
         "vol": "—", "vol_raw": None, "hi52": max(closes), "lo52": min(closes),
         "ytd": None, "ma20": ma(closes, 20), "ma50": ma(closes, 50), "rsi14": rsi(closes),
-        "closes": closes, "dates": dates,
+        "closes": closes, "dates": dates, "ohlc": ohlc, "exch": "深交所/上交所",
     }
 
 def fetch_news(query, n=4, zh=False):
@@ -255,6 +270,16 @@ def hero_quotes_html(quotes):
                 f'<div class="q-price">{d["price"]:,.2f}</div><div class="q-chg {cls}">{d["chg"]:+.2f}%</div>'
                 f'<div class="q-meta"><span>52周高 <b>{hi_s}</b></span><span>52周低 <b>{lo_s}</b></span><span>量 <b>{d["vol"]}</b></span></div></div></a>')
     return q("%5ESOX", "费城半导体指数") + q("MU", "美光 Micron")
+
+def wl_rows_html(quotes):
+    """TradingView 左侧 watchlist 栏（构建时内嵌，点击切换标的）"""
+    out = []
+    for q in quotes:
+        cls = "up" if q["chg"] > 0.05 else ("down" if q["chg"] < -0.05 else "flat")
+        out.append(f'<div class="wl-row" data-sym="{H.escape(q["sym"])}">'
+                   f'<span class="ws">{q["short"]}</span><span class="wn">{q["name"]}</span>'
+                   f'<span class="wp">{q["price"]:,.2f}</span><span class="wc {cls}">{q["chg"]:+.2f}%</span></div>')
+    return "\n".join(out)
 
 def news_items_html():
     items = []
@@ -444,144 +469,6 @@ def revenue_table_html():
     return f'<div style="font-size:11px;color:#4a5570;margin-bottom:6px">报告月：{H.escape(last_month)} · 最近 {len(rows[-5:])} 行</div><table><tr>{hdr}</tr>' + "".join(trs) + "</table>"
 
 # ───────────── 渲染：详情页 ─────────────
-DETAIL_TEMPLATE = r"""<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{title}} · SAM C 情报终端</title>
-<style>
-:root{--bg:#000;--panel:#0a0a0c;--panel2:#101014;--hover:#16161c;--line:#1c1f24;--line2:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--cyan:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:36px}
-.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:9px 18px;background:#050507;border-bottom:1px solid var(--line)}
-.back{color:var(--dim);text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:6px}
-.back:hover{color:var(--txt);border-color:var(--line2)}
-.sym-big{font-family:var(--mono);font-size:20px;font-weight:800;color:#7db3ff}
-.name-line{font-size:11px;color:var(--dim)}
-.live{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);letter-spacing:1px}
-.live i{width:6px;height:6px;border-radius:50%;background:var(--down);box-shadow:0 0 6px var(--down);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.wrap{max-width:1100px;margin:0 auto;padding:18px 20px}
-.price-row{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:4px}
-.price{font-family:var(--mono);font-size:44px;font-weight:800;letter-spacing:.5px}
-.chg{font-family:var(--mono);font-size:20px;font-weight:700}
-.up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--dim)}
-.cur{font-size:12px;color:var(--faint);margin-left:2px}
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
-.m{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
-.m .k{font-size:10px;letter-spacing:1px;color:var(--faint);text-transform:uppercase}
-.m .v{font-family:var(--mono);font-size:17px;font-weight:700;margin-top:2px}
-.m .s{font-size:10.5px;color:var(--dim)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:14px;overflow:hidden}
-.panel-h{padding:8px 14px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:0;color:var(--dim);font-weight:500;display:flex;align-items:center;justify-content:space-between}
-.tf{display:flex;gap:2px}
-.tf button{background:transparent;border:1px solid transparent;color:var(--dim);font-size:11px;padding:2px 9px;border-radius:4px;cursor:pointer;font-family:var(--sans)}
-.tf button:hover{background:var(--hover);color:var(--txt)}
-.tf button.on{background:var(--hover);color:var(--txt);border-color:var(--line2)}
-.loading{color:var(--faint);padding:24px;text-align:center;font-size:12px}
-.errbox{display:none;color:var(--down);background:var(--down-bg);border:1px solid var(--line);border-radius:6px;padding:14px;margin:14px;font-size:12px}
-.chart-box{background:#000;padding:12px 8px 4px}
-.chart-box svg{width:100%;height:320px;display:block}
-.legend{display:flex;gap:18px;padding:8px 14px;font-size:10.5px;color:var(--dim)}
-.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
-.news a{display:block;padding:8px 14px;color:#b8bdc9;text-decoration:none;font-size:12px;border-bottom:1px dashed rgba(42,46,57,.8)}
-.news a:hover{color:#7db3ff;background:var(--hover)}
-.news .src{color:var(--faint);font-size:9.5px;margin-left:6px}
-.pos-bar{height:8px;border-radius:4px;background:#0e1119;border:1px solid var(--line);overflow:hidden;margin-top:6px}
-.pos-bar i{display:block;height:100%;background:linear-gradient(90deg,#089981,var(--gold),#f23645)}
-.empty{color:var(--faint);font-style:italic;font-size:11px;padding:8px 14px}
-.statusbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:5px 18px;background:rgba(19,23,34,.94);border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
-</style>
-</head>
-<body>
-<div class="topbar">
-  <a class="back" href="index.html">← 返回</a>
-  <a class="back" id="deep-link" href="#" style="color:var(--gold)">深度分析 →</a>
-  <div><span class="sym-big" id="sym">—</span> <span class="name-line" id="name"></span></div>
-  <div class="live"><i></i>LIVE</div>
-</div>
-<div class="wrap">
-  <div class="price-row">
-    <span class="price" id="price">—</span><span class="chg" id="chg"></span><span class="cur" id="cur"></span>
-  </div>
-  <div class="metrics" id="metrics"></div>
-  <div class="panel">
-    <div class="panel-h"><span>价格走势 · 价格 / MA20 / MA50</span><span class="tf"><button data-r="30">1M</button><button data-r="90">3M</button><button data-r="180">6M</button><button data-r="252" class="on">1Y</button></span></div>
-    <div class="chart-box"><div id="chart"><div class="loading">数据加载中…</div></div></div>
-    <div class="legend"><span><i style="background:#7db3ff"></i>价格</span><span><i style="background:var(--gold)"></i>MA20</span><span><i style="background:#b066ff"></i>MA50</span></div>
-  </div>
-  <div class="panel">
-    <div class="panel-h">相关新闻</div>
-    <div class="news" id="news"></div>
-  </div>
-</div>
-<div class="statusbar"><span id="src"></span><span>仅供个人研究 · 模拟决策不构成投资建议</span></div>
-{{data_js}}
-<script>
-window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
-const s = new URLSearchParams(location.search).get('s');
-document.getElementById('deep-link').href = 'deep.html?s=' + encodeURIComponent(s);
-const fail = function(m){ var e=document.getElementById('errbox'); e.style.display='block'; e.textContent=m; document.getElementById('price').textContent='—'; };
-function render(q){
-  document.title = q.short + ' · SAM C';
-  document.getElementById('sym').textContent = q.short;
-  document.getElementById('name').textContent = q.name + ' · ' + q.group;
-  document.getElementById('price').textContent = q.price.toLocaleString(undefined,{minimumFractionDigits:2});
-  document.getElementById('cur').textContent = q.cur;
-  const c = document.getElementById('chg');
-  c.textContent = (q.chg>=0?'+':'') + q.chg.toFixed(2) + '%';
-  c.className = 'chg ' + (q.chg>0.05?'up':q.chg<-0.05?'down':'flat');
-  const pos = q.hi52>q.lo52 ? Math.round((q.price-q.lo52)/(q.hi52-q.lo52)*100) : 0;
-  const m = [
-    ['52周高', q.hi52.toLocaleString(), ''], ['52周低', q.lo52.toLocaleString(), ''],
-    ['年初至今', q.ytd!=null?(q.ytd>=0?'+':'')+q.ytd.toFixed(1)+'%':'未披露', q.ytd!=null?(q.ytd>0?'up':'down'):''],
-    ['MA20', q.ma20!=null?q.ma20.toLocaleString():'—', q.ma20!=null?(q.price>=q.ma20?'up':'down'):''],
-    ['MA50', q.ma50!=null?q.ma50.toLocaleString():'—', q.ma50!=null?(q.price>=q.ma50?'up':'down'):''],
-    ['RSI14', q.rsi14!=null?q.rsi14.toFixed(1):'—', q.rsi14!=null?(q.rsi14>=70?'up':q.rsi14<=30?'down':''):''],
-    ['成交量', q.vol, ''], ['52周位置', pos+'%', '']
-  ];
-  document.getElementById('metrics').innerHTML = m.map(x =>
-    `<div class="m"><div class="k">${x[0]}</div><div class="v ${x[2]}">${x[1]}</div>` +
-    (x[0]==='RSI14'&&q.rsi14!=null?`<div class="s">${q.rsi14>=70?'超买':q.rsi14<=30?'超卖':'中性'}</div>`:'') +
-    (x[0]==='52周位置'?`<div class="pos-bar"><i style="width:${pos}%"></i></div>`:'') +
-    `</div>`).join('');
-  // 图表（支持周期切换）
-  const W=900,H=300,P=12;
-  function drawChart(r){
-    const cl=q.closes, ds=q.dates;
-    const box=document.getElementById('chart');
-    if (!cl || cl.length<10){ box.innerHTML='<div class="loading">数据点不足，无法绘图</div>'; return; }
-    const sl=cl.slice(-r), sld=ds?ds.slice(-r):[];
-    const mn=Math.min(...sl), mx=Math.max(...sl), rg=(mx-mn)||1;
-    const X=i=>P+i*(W-2*P)/(sl.length-1), Y=v=>H-P-(v-mn)/rg*(H-2*P);
-    const line=(arr,color,w)=>{let d='';arr.forEach((v,i)=>{if(v==null)return;d+=(d?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1)+' '});return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}"/>`};
-    const m20=sl.map((_,i)=>i>=19?sl.slice(i-19,i+1).reduce((a,b)=>a+b)/20:null);
-    const m50=sl.map((_,i)=>i>=49?sl.slice(i-49,i+1).reduce((a,b)=>a+b)/50:null);
-    let grid='';for(let g=0;g<5;g++){const y=Y(mn+rg*g/4);grid+=`<line x1="${P}" y1="${y}" x2="${W-P}" y2="${y}" stroke="#2a2e39" stroke-width="1"/>`;}
-    const area=`<path d="M${X(0).toFixed(1)},${Y(sl[0]).toFixed(1)} ${sl.map((v,i)=>'L'+X(i).toFixed(1)+','+Y(v).toFixed(1)).join(' ')} L${X(sl.length-1).toFixed(1)},${H-P} L${X(0).toFixed(1)},${H-P} Z" fill="rgba(41,98,255,.10)"/>`;
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${area}${line(sl,'#2962ff',2)}${line(m20,'#d4a853',1.2)}${line(m50,'#b066ff',1.2)}</svg>`;
-  }
-  drawChart(252);
-  document.querySelectorAll('.tf button').forEach(b=>b.addEventListener('click',()=>{
-    document.querySelectorAll('.tf button').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on'); drawChart(+b.dataset.r);
-  }));
-  const nw = q.news||[];
-  document.getElementById('news').innerHTML = nw.length ? nw.map(n=>`<a href="${n.u}" target="_blank">${n.t}<span class="src">${n.s}</span></a>`).join('') : '<div class="empty">暂无相关新闻</div>';
-}
-(function(){ const sc=document.createElement('script');
-  sc.src='data/'+encodeURIComponent(s)+'.js';
-  sc.onload=function(){ if(window.QUOTE){ render(window.QUOTE); } else { fail('数据文件为空'); } };
-  sc.onerror=function(){ fail('数据加载失败：网络问题或数据未生成，请刷新重试'); };
-  document.head.appendChild(sc);
-})();
-document.getElementById('src').textContent = 'Yahoo Finance · 东方财富 · Google News · 更新 ' + new Date().toLocaleString('zh-CN');
-</script>
-</body>
-</html>
-"""
-
 # ───────────── 渲染：三级页（深度分析） ─────────────
 DEEP_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -667,7 +554,7 @@ function render(q){
   document.title = q.short + ' · 深度分析 · SAM C';
   document.getElementById('sym').textContent = q.short;
   document.getElementById('name').textContent = q.name + ' · ' + q.group;
-  document.getElementById('price').textContent = q.price.toLocaleString(undefined,{minimumFractionDigits:2});
+  document.getElementById('price').textContent = q.price.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
   document.getElementById('cur').textContent = q.cur;
   const c=document.getElementById('chg');
   c.textContent=(q.chg>=0?'+':'')+q.chg.toFixed(2)+'%';
@@ -757,7 +644,7 @@ function render(q){
   document.getElementById('t-monthly').innerHTML=rows.reverse().join('');
 }
 (function(){ const sc=document.createElement('script');
-  sc.src='data/'+encodeURIComponent(s)+'.js';
+  sc.src='data/'+s.replace(/%/g,'P').replace(/=/g,'E').replace(/\^/g,'C').replace(/\./g,'D').replace(/\//g,'S')+'.js';
   sc.onload=function(){ if(window.QUOTE){ render(window.QUOTE); } else { fail('数据文件为空'); } };
   sc.onerror=function(){ fail('数据加载失败：网络问题或数据未生成，请刷新重试'); };
   document.head.appendChild(sc);
@@ -792,12 +679,14 @@ def main():
         f.write("window.QUOTES=" + json.dumps(data, ensure_ascii=False) + ";")
 
     # 按标的拆分数据文件（data/<sym>.js，每个 ~5KB，动态加载）
-    from urllib.parse import quote as _q
+    import shutil
     ddir = os.path.join(BASE, "data")
+    if os.path.exists(ddir):
+        shutil.rmtree(ddir)
     os.makedirs(ddir, exist_ok=True)
     for qd in quotes:
-        slim = {k: qd[k] for k in ("short", "name", "group", "price", "chg", "cur", "vol", "hi52", "lo52", "ytd", "ma20", "ma50", "rsi14", "closes", "dates", "news")}
-        fn = os.path.join(ddir, _q(qd["sym"], safe="") + ".js")
+        slim = {k: qd[k] for k in ("short", "name", "group", "price", "prev", "chg", "cur", "vol", "hi52", "lo52", "ytd", "ma20", "ma50", "rsi14", "closes", "dates", "news", "ohlc", "exch")}
+        fn = os.path.join(ddir, sym_fn(qd["sym"]) + ".js")
         with open(fn, "w", encoding="utf-8") as f:
             f.write("window.QUOTE=" + json.dumps(slim, ensure_ascii=False) + ";")
 
@@ -823,9 +712,11 @@ def main():
         tpl = tpl.replace(k, v)
     open(os.path.join(BASE, "index.html"), "w", encoding="utf-8").write(tpl)
 
-    dj = f"<script src=\"data.js?v={now.strftime('%Y%m%d%H%M')}\"></script>"
-    # detail.html
-    open(os.path.join(BASE, "detail.html"), "w", encoding="utf-8").write(DETAIL_TEMPLATE.replace("{{data_js}}", dj))
+    dj = ""
+    # detail.html（TradingView 布局，独立模板文件）
+    dtpl = open(os.path.join(BASE, "detail_template.html"), encoding="utf-8").read()
+    dtpl = dtpl.replace("{{wl_rows}}", wl_rows_html(quotes)).replace("{{wl_cnt}}", str(len(quotes)))
+    open(os.path.join(BASE, "detail.html"), "w", encoding="utf-8").write(dtpl)
     # deep.html
     open(os.path.join(BASE, "deep.html"), "w", encoding="utf-8").write(DEEP_TEMPLATE.replace("{{data_js}}", dj))
 
