@@ -3,83 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🏛️ SAM C · 情报终端</title>
+<title>Market Watch · SAM C</title>
 <style>
 :root{
   --bg:#131722; --panel:#1e222d; --panel2:#242a37; --hover:#2a3040;
   --line:#2a2e39; --line2:#363a45;
   --txt:#d1d4dc; --dim:#787b86; --faint:#5d606b;
-  --cyan:#2962ff; --gold:#d4a853; --up:#f23645; --down:#089981; /* 红涨绿跌 */
+  --blue:#2962ff; --gold:#d4a853;
+  --up:#089981; --up-bg:rgba(8,153,129,.12); --down:#f23645; --down-bg:rgba(242,54,69,.12);
   --mono:"SF Mono",ui-monospace,Menlo,Consolas,"JetBrains Mono",monospace;
   --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:12px;line-height:1.55;-webkit-font-smoothing:antialiased;padding-bottom:34px}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:12px;line-height:1.55;-webkit-font-smoothing:antialiased;padding-bottom:32px}
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#363a45;border-radius:4px}::-webkit-scrollbar-track{background:transparent}
 
-/* ── Top bar ── */
-.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;padding:8px 16px;background:rgba(19,23,34,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.logo{font-size:16px;font-weight:800;letter-spacing:.5px;white-space:nowrap}
-.logo span{color:var(--gold)}
-.brand-sub{font-size:9px;color:var(--faint);letter-spacing:2px;text-transform:uppercase;margin-top:-2px}
-.search{flex:1;max-width:340px;position:relative}
-.search input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--txt);padding:6px 12px;font-size:12px;outline:none}
-.search input:focus{border-color:var(--cyan)}
+/* ── Top bar (TradingView style) ── */
+.topbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+.icon-btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:none;background:transparent;color:var(--dim);font-size:15px;cursor:pointer}
+.icon-btn:hover{background:var(--hover);color:var(--txt)}
+.logo-ic{background:var(--blue);color:#fff;border-radius:7px;font-size:14px;font-weight:800}
+.search{flex:1;max-width:420px;margin:0 auto;position:relative}
+.search input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--txt);padding:6px 30px 6px 12px;font-size:12px;outline:none;transition:border-color .15s}
+.search input:focus{border-color:var(--blue)}
 .search input::placeholder{color:var(--faint)}
-.live{display:flex;align-items:center;gap:6px;font-size:10px;color:#787b86;letter-spacing:1px;white-space:nowrap}
-.live i{width:6px;height:6px;border-radius:50%;background:var(--down);box-shadow:0 0 6px var(--down);animation:pulse 2s infinite}
+.search::after{content:"⌕";position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:14px}
+.live{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);letter-spacing:1px;white-space:nowrap;padding:0 6px}
+.live i{width:6px;height:6px;border-radius:50%;background:var(--up);box-shadow:0 0 6px var(--up);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.tb-date{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap}
 
-/* ── Layout ── */
-.wrap{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:10px;padding:10px 12px;align-items:start}
-@media(max-width:1024px){.wrap{grid-template-columns:1fr}}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
-.panel-h{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-weight:700}
+/* ── Layout: sidebar + main ── */
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:10px 12px}
+.with-sb{grid-template-columns:minmax(0,330px) minmax(0,1fr)}
+@media(max-width:1100px){.with-sb{grid-template-columns:1fr}}
+.sidebar{display:none}
+.with-sb .sidebar{display:block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:10px}
+.panel-h{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:1.2px;color:var(--dim);text-transform:uppercase;font-weight:700}
 .panel-h .hint{font-weight:400;letter-spacing:0;text-transform:none;color:var(--faint);font-size:10px}
-.panel-b{padding:8px 12px}
+.panel-b{padding:6px 10px}
 
-/* ── Brief cards (compact) ── */
-.brief{display:grid;grid-template-columns:3px 1fr;border-bottom:1px solid var(--line);transition:background .12s}
+/* ── Brief cards ── */
+.brief{display:grid;grid-template-columns:3px 1fr;border-bottom:1px solid var(--line);transition:background .12s;cursor:pointer}
 .brief:hover{background:var(--hover)}
 .brief .bar{grid-row:1/4}
-.brief .body{padding:9px 12px 9px 10px}
+.brief .body{padding:8px 10px 8px 9px}
 .brief.lv-red .bar{background:var(--up)} .brief.lv-yellow .bar{background:var(--gold)} .brief.lv-green .bar{background:var(--down)} .brief.lv-gray .bar{background:var(--faint)}
 .lv-tag{font-size:8.5px;letter-spacing:1px;padding:1px 5px;border-radius:3px;font-weight:800;margin-right:6px;vertical-align:1px}
-.lv-red .lv-tag{background:rgba(242,54,69,.18);color:var(--up)} .lv-yellow .lv-tag{background:rgba(212,168,83,.18);color:var(--gold)} .lv-green .lv-tag{background:rgba(8,153,129,.18);color:var(--down)}
-.brief .t{font-size:12.5px;font-weight:700;margin-bottom:3px}
-.brief .f{font-size:11.5px;color:#b3b8c4}
+.lv-red .lv-tag{background:var(--up-bg);color:var(--up)} .lv-yellow .lv-tag{background:rgba(212,168,83,.18);color:var(--gold)} .lv-green .lv-tag{background:var(--down-bg);color:var(--down)}
+.brief .t{font-size:12px;font-weight:700;margin-bottom:3px}
+.brief .f{font-size:11px;color:#b3b8c4}
 .brief .f .src{color:var(--faint)}
-.means{margin-top:5px;font-size:11px;color:#9aa1ad;border-left:2px solid var(--cyan);padding:3px 8px;background:rgba(41,98,255,.06);border-radius:0 4px 4px 0}
+.means{margin-top:5px;font-size:10.5px;color:#9aa1ad;border-left:2px solid var(--blue);padding:3px 8px;background:rgba(41,98,255,.06);border-radius:0 4px 4px 0}
 .means b{color:#7db3ff}
-.dec{margin-top:6px;border:1px solid rgba(212,168,83,.28);border-radius:6px;background:rgba(212,168,83,.05);padding:7px 10px;font-size:11px}
-.dec .dh{font-size:9px;letter-spacing:1.5px;color:var(--gold);font-weight:800;margin-bottom:4px}
+.dec{margin-top:6px;border:1px solid rgba(212,168,83,.28);border-radius:4px;background:rgba(212,168,83,.05);padding:6px 9px;font-size:10.5px}
+.dec .dh{font-size:9px;letter-spacing:1.5px;color:var(--gold);font-weight:800;margin-bottom:3px}
 .dec .row{margin:2px 0;color:#c4c9d4}
 .dec .row b{color:var(--txt);margin-right:4px}
-.stance{display:inline-block;font-size:9.5px;font-weight:800;padding:1px 7px;border-radius:99px;margin-left:5px;letter-spacing:.5px;vertical-align:1px}
-.st-hold{background:rgba(41,98,255,.16);color:#7db3ff}.st-add{background:rgba(242,54,69,.16);color:var(--up)}.st-cut{background:rgba(212,168,83,.2);color:var(--gold)}.st-watch{background:rgba(120,123,134,.2);color:var(--dim)}
-
-/* ── Lists ── */
-ul.tl{list-style:none}ul.tl li{padding:5px 0 5px 16px;position:relative;font-size:11.5px;color:#b8bdc9;border-bottom:1px dashed rgba(42,46,57,.8)}
+.stance{display:inline-block;font-size:9px;font-weight:800;padding:1px 6px;border-radius:99px;margin-left:5px;letter-spacing:.5px;vertical-align:1px}
+.st-hold{background:rgba(41,98,255,.16);color:#7db3ff}.st-add{background:var(--up-bg);color:var(--up)}.st-cut{background:rgba(212,168,83,.2);color:var(--gold)}.st-watch{background:rgba(120,123,134,.2);color:var(--dim)}
+ul.tl{list-style:none}ul.tl li{padding:5px 0 5px 16px;position:relative;font-size:11px;color:#b8bdc9;border-bottom:1px dashed rgba(42,46,57,.8)}
 ul.tl li::before{content:"▸";position:absolute;left:2px;color:var(--gold);font-size:9px;top:7px}
-.dec-list li{list-style:none;padding:5px 0 5px 18px;position:relative;font-size:11.5px;color:#c0c5d0;border-bottom:1px dashed rgba(42,46,57,.8)}
-.dec-list li::before{content:"◆";position:absolute;left:2px;color:var(--cyan);font-size:8px;top:8px}
+.dec-list li{list-style:none;padding:5px 0 5px 18px;position:relative;font-size:11px;color:#c0c5d0;border-bottom:1px dashed rgba(42,46,57,.8)}
+.dec-list li::before{content:"◆";position:absolute;left:2px;color:var(--blue);font-size:8px;top:8px}
 
-/* ── Hero quotes ── */
-.hero{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-@media(max-width:600px){.hero{grid-template-columns:1fr}}
-.hero .q{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
-.q-top{display:flex;justify-content:space-between;align-items:baseline}
-.q-sym{font-family:var(--mono);font-weight:800;font-size:14px;color:#7db3ff}
-.q-name{font-size:10px;color:var(--faint)}
-.q-price{font-family:var(--mono);font-size:26px;font-weight:800;letter-spacing:.5px;margin:4px 0 2px}
-.q-chg{font-family:var(--mono);font-size:12px;font-weight:700}
-.q-meta{display:flex;gap:14px;margin-top:6px;font-size:10px;color:var(--dim);border-top:1px solid var(--line);padding-top:6px}
-.q-meta b{font-family:var(--mono);color:var(--txt);font-weight:600}
+/* ── Index chart cards ── */
+.idx-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+.idx-card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:8px 12px 4px;cursor:pointer;transition:border-color .15s}
+.idx-card:hover{border-color:var(--blue)}
+.idx-top{display:flex;justify-content:space-between;align-items:baseline}
+.idx-name{font-size:12px;font-weight:700}
+.idx-sym{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.idx-nums{display:flex;align-items:baseline;gap:10px;margin:3px 0 2px}
+.idx-price{font-family:var(--mono);font-size:19px;font-weight:800}
+.idx-chg{font-family:var(--mono);font-size:11.5px;font-weight:700}
+.idx-chg.up{color:var(--up)}.idx-chg.down{color:var(--down)}
+.idx-chart{width:100%;height:84px;display:block}
 
-/* ── Watchlist table ── */
+/* ── Watchlist ── */
 table{width:100%;border-collapse:collapse}
-th{font-size:9px;letter-spacing:1px;color:var(--faint);text-align:right;padding:4px 8px;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase;position:sticky;top:0;background:var(--panel)}
+th{font-size:9px;letter-spacing:1px;color:var(--faint);text-align:right;padding:4px 8px;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase}
 th:first-child,th:nth-child(2){text-align:left}
 td{padding:4px 8px;border-bottom:1px solid rgba(42,46,57,.6);font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 td:first-child{text-align:left;font-family:var(--mono);color:#7db3ff;font-size:11px}
@@ -87,102 +90,119 @@ td:nth-child(2){text-align:left;color:var(--dim);font-size:11px;max-width:90px;o
 tr:hover td{background:var(--hover)}
 tr.group td{font-size:9px;letter-spacing:1.5px;color:var(--faint);padding:5px 8px 2px;border-bottom:none;text-transform:uppercase;text-align:left;background:var(--panel2)}
 .chg{font-family:var(--mono);font-weight:700;font-size:11px;padding:1px 6px;border-radius:4px}
-.up{color:var(--up);background:rgba(242,54,69,.1)}.down{color:var(--down);background:rgba(8,153,129,.1)}.flat{color:var(--dim);background:rgba(120,123,134,.12)}
+.up{color:var(--up);background:var(--up-bg)}.down{color:var(--down);background:var(--down-bg)}.flat{color:var(--dim);background:rgba(120,123,134,.12)}
 .spark{width:64px;height:20px;display:block;margin-left:auto}
 .spark path{fill:none;stroke-width:1.5}
 .spark.up path{stroke:var(--up)}.spark.down path{stroke:var(--down)}.spark.flat path{stroke:var(--faint)}
 td.vol{font-family:var(--mono);font-size:10px;color:var(--faint)}
 
-/* ── News feed ── */
-.news{max-height:280px;overflow-y:auto}
-.news a{display:block;padding:5px 4px;color:#b8bdc9;text-decoration:none;font-size:11.5px;border-bottom:1px dashed rgba(42,46,57,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ── News ── */
+.news{max-height:260px;overflow-y:auto}
+.news a{display:block;padding:5px 12px;color:#b8bdc9;text-decoration:none;font-size:11px;border-bottom:1px dashed rgba(42,46,57,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .news a:hover{color:#7db3ff;background:var(--hover)}
 .news .src{color:var(--faint);font-size:9.5px;margin-left:6px}
 
-/* ── DXI ── */
-.dxi-val{font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:1px}
-.dxi-sub{font-size:10.5px;color:var(--dim);margin-left:10px}
-.chart-box{background:#0e1119;border:1px solid var(--line);border-radius:6px;margin-top:6px;padding:6px 4px 2px}
-.chart-box svg{width:100%;height:90px;display:block}
+/* ── DXI / bottom row ── */
+.dxi-val{font-family:var(--mono);font-size:20px;font-weight:800;letter-spacing:1px}
+.dxi-sub{font-size:10px;color:var(--dim);margin-left:8px}
+.chart-box{background:#0e1119;border:1px solid var(--line);border-radius:4px;margin-top:6px;padding:6px 4px 2px}
+.chart-box svg{width:100%;height:84px;display:block}
 .empty{color:var(--faint);font-style:italic;font-size:11px;padding:8px 2px}
+.bottom-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
 
 /* ── Status bar ── */
-.statusbar{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 16px;background:rgba(19,23,34,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
+.statusbar{position:fixed;bottom:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 14px;background:var(--panel);border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
 .statusbar .srcs{display:flex;gap:12px;overflow:hidden;white-space:nowrap}
-.statusbar .ok::before{content:"●";color:var(--down);margin-right:4px;font-size:8px}
-.statusbar .bad::before{content:"●";color:var(--up);margin-right:4px;font-size:8px}
+.statusbar .ok::before{content:"●";color:var(--up);margin-right:4px;font-size:8px}
+.statusbar .bad::before{content:"●";color:var(--down);margin-right:4px;font-size:8px}
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div>
-    <div class="logo">SAM C <span>·</span> 情报终端</div>
-    <div class="brand-sub">Storage &amp; Semiconductor Intelligence Terminal</div>
-  </div>
-  <div class="search"><input id="q" type="text" placeholder="搜索标的 (MU / 兆易创新 / SOX)…" autocomplete="off"></div>
-  <div class="tb-date">{{date_en}} · {{date_cn}}</div>
+  <button class="icon-btn logo-ic" title="SAM C">S</button>
+  <button class="icon-btn" id="sb-toggle" title="情报面板">☰</button>
+  <div class="search"><input id="q" type="text" placeholder="搜索 (MU / 黄金 / 上证 / SOX)…" autocomplete="off"></div>
   <div class="live"><i></i>LIVE</div>
+  <button class="icon-btn" onclick="location.reload()" title="刷新">⟳</button>
 </div>
 
-<div class="wrap">
+<div class="layout with-sb" id="layout">
 
-  <!-- ── 左列：简报 ── -->
-  <div>
+  <!-- 左：情报区（可折叠） -->
+  <aside class="sidebar" id="sidebar">
     <div class="panel">
-      <div class="panel-h"><span>Ⅰ · 最高优先级情报</span><span class="hint">分级 · 决策方案 · 模拟场景</span></div>
+      <div class="panel-h"><span>Ⅰ · 情报</span><span class="hint">分级 · 决策</span></div>
       <div>{{brief_cards}}</div>
     </div>
-    <div class="hero">{{hero_quotes}}</div>
     <div class="panel">
-      <div class="panel-h"><span>Ⅵ · 今日决策清单</span></div>
+      <div class="panel-h"><span>Ⅵ · 决策清单</span></div>
       <div class="panel-b"><ul class="dec-list">{{decision_list}}</ul></div>
     </div>
     <div class="panel">
-      <div class="panel-h"><span>Ⅳ · 时间线 &amp; 待核实</span></div>
+      <div class="panel-h"><span>Ⅳ · 时间线</span></div>
       <div class="panel-b"><ul class="tl">{{timeline}}</ul></div>
     </div>
-  </div>
+  </aside>
 
-  <!-- ── 右列：行情 ── -->
-  <div>
+  <!-- 主区 -->
+  <main>
     <div class="panel">
-      <div class="panel-h"><span>全球存储链行情</span><span class="hint">点击行可搜索</span></div>
-      <table id="watchlist">
+      <div class="panel-h"><span>全球大盘 · 中日韩美台港</span><span class="hint">点击进入详情</span></div>
+      <div class="panel-b"><div class="idx-grid">{{idx_cards}}</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><span>行情 · Watchlist</span><span class="hint">{{market_count}} 标的 · 点击行看详情</span></div>
+      <table>
         <thead><tr><th>代码</th><th>名称</th><th>价格</th><th>涨跌</th><th>量</th><th>5日</th></tr></thead>
-        <tbody>{{market_rows}}</tbody>
+        <tbody id="watchlist">{{market_rows}}</tbody>
       </table>
     </div>
-    <div class="panel">
-      <div class="panel-h"><span>今日要闻流</span><span class="hint">CFM · TrendForce</span></div>
-      <div class="news" id="news">{{news_items}}</div>
-    </div>
-    <div class="panel">
-      <div class="panel-h"><span>DXI 现货指数</span></div>
-      <div class="panel-b">
-        <span class="dxi-val">{{dxi_value}}</span><span class="dxi-sub">{{dxi_sub}}</span>
-        <div class="chart-box">{{dxi_chart}}</div>
+    <div class="bottom-row">
+      <div class="panel">
+        <div class="panel-h"><span>今日要闻</span></div>
+        <div class="news">{{news_items}}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><span>DXI 现货指数</span></div>
+        <div class="panel-b">
+          <span class="dxi-val">{{dxi_value}}</span><span class="dxi-sub">{{dxi_sub}}</span>
+          <div class="chart-box">{{dxi_chart}}</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><span>台厂月营收</span></div>
+        <div class="panel-b">{{revenue_table}}</div>
       </div>
     </div>
-    <div class="panel">
-      <div class="panel-h"><span>台厂月营收</span></div>
-      <div class="panel-b">{{revenue_table}}</div>
-    </div>
-  </div>
+  </main>
 
 </div>
 
 <div class="statusbar">
   <div class="srcs">
     <span class="ok">CFM</span><span class="ok">TrendForce</span><span class="ok">集微网</span>
-    <span class="ok">Yahoo</span><span class="ok">东方财富</span><span class="bad">DRAMeXchange*</span>
+    <span class="ok">Yahoo</span><span class="ok">东方财富</span>
   </div>
-  <div>UPDATED {{updated_at}} · 仅供个人研究 · 模拟决策不构成投资建议</div>
+  <div>{{date_cn}} · UPDATED {{updated_at}} · 仅供个人研究</div>
 </div>
 
 <script src="data.js"></script>
 <script>
-// 搜索过滤 watchlist
+// 情报面板折叠
+const sb = document.getElementById('sidebar');
+const layout = document.getElementById('layout');
+const sbBtn = document.getElementById('sb-toggle');
+if (localStorage.getItem('sb') === '1') {
+  layout.classList.remove('with-sb');
+  sbBtn.textContent = '☰';
+}
+sbBtn.addEventListener('click', () => {
+  const hidden = layout.classList.toggle('with-sb');
+  localStorage.setItem('sb', hidden ? '0' : '1');
+  sbBtn.textContent = hidden ? '☰' : '✕';
+});
+// 搜索过滤
 const q = document.getElementById('q');
 q.addEventListener('input', () => {
   const k = q.value.trim().toLowerCase();
@@ -191,7 +211,7 @@ q.addEventListener('input', () => {
     tr.style.display = tr.textContent.toLowerCase().includes(k) ? '' : 'none';
   });
 });
-// 行点击 → 详情页
+// 行点击 → 详情
 document.querySelectorAll('#watchlist tbody tr[data-sym]').forEach(tr => {
   tr.style.cursor = 'pointer';
   tr.addEventListener('click', () => { location.href = 'detail.html?s=' + encodeURIComponent(tr.dataset.sym); });

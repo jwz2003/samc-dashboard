@@ -26,6 +26,9 @@ ALL_SYMS = [
     ("SPY", "SPY", "标普500", "宏观"), ("QQQ", "QQQ", "纳指100", "宏观"),
     ("^VIX", "VIX", "恐慌指数", "宏观"), ("^TNX", "TNX", "美债10Y", "宏观"),
     ("DX-Y.NYB", "DXY", "美元指数", "宏观"),
+    ("000001.SS", "SSE", "上证指数", "全球大盘"), ("%5EN225", "N225", "日经225", "全球大盘"),
+    ("%5EKS11", "KOSPI", "韩国综合", "全球大盘"), ("%5EGSPC", "SPX", "标普500", "全球大盘"),
+    ("%5ETWII", "TWII", "台湾加权", "全球大盘"), ("%5EHSI", "HSI", "恒生指数", "全球大盘"),
     ("CL=F", "WTI", "WTI原油", "能源"), ("BZ=F", "Brent", "布伦特原油", "能源"),
     ("NG=F", "NG", "天然气", "能源"),
     ("GC=F", "Gold", "黄金", "贵金属"), ("SI=F", "Silver", "白银", "贵金属"),
@@ -46,6 +49,8 @@ NEWS_Q = {
     "NG=F": "natural gas", "GC=F": "gold price", "SI=F": "silver price",
     "PL=F": "platinum", "PA=F": "palladium", "HG=F": "copper price", "ALI=F": "aluminum price",
     "ZNC=F": "zinc price", "0NI=F": "nickel price", "TIO=F": "iron ore price",
+    "000001.SS": "上证指数 A股", "%5EN225": "Nikkei 225", "%5EKS11": "KOSPI index",
+    "%5EGSPC": "S&P 500 index", "%5ETWII": "Taiwan stock index", "%5EHSI": "Hang Seng index",
 }
 
 def fmt_vol(v):
@@ -159,13 +164,13 @@ def build_quote(item):
 def market_rows_html(quotes):
     groups = []
     for q in quotes:
-        if q["group"] not in groups:
+        if q["group"] not in groups and q["group"] != "全球大盘":
             groups.append(q["group"])
     out = []
     for g in groups:
         out.append(f'<tr class="group" data-g="{g}"><td colspan="6">{g}</td></tr>')
         for q in quotes:
-            if q["group"] != g:
+            if q["group"] != g or q["group"] == "全球大盘":
                 continue
             closes = q["closes"][-5:]
             sp = sparkline(closes)
@@ -174,6 +179,40 @@ def market_rows_html(quotes):
                        f'<td>{q["price"]:,.2f}</td><td><span class="chg {cls}">{q["chg"]:+.2f}%</span></td>'
                        f'<td class="vol">{q["vol"]}</td><td>{sp}</td></tr>')
     return "\n".join(out)
+
+def index_charts_html(quotes):
+    idx = [q for q in quotes if q["group"] == "全球大盘"]
+    cards = []
+    for q in idx:
+        closes = q.get("closes") or []
+        cls = "up" if q["chg"] > 0.05 else ("down" if q["chg"] < -0.05 else "flat")
+        chg_s = f"{q['chg']:+.2f}%"
+        chart = ""
+        if len(closes) >= 10:
+            w, h, pad = 300, 84, 6
+            mn, mx = min(closes), max(closes)
+            rg = (mx - mn) or 1
+            pts = []
+            for i, v in enumerate(closes):
+                x = pad + i * (w - 2 * pad) / (len(closes) - 1)
+                y = h - pad - (v - mn) / rg * (h - 2 * pad)
+                pts.append(f"{x:.1f},{y:.1f}")
+            lx = pad + (len(closes) - 1) * (w - 2 * pad) / (len(closes) - 1)
+            col = "#089981" if q["chg"] > 0.05 else ("#f23645" if q["chg"] < -0.05 else "#787b86")
+            chart = (f'<svg class="idx-chart" viewBox="0 0 {w} {h}" preserveAspectRatio="none">'
+                     f'<defs><linearGradient id="g{q["sym"]}" x1="0" y1="0" x2="0" y2="1">'
+                     f'<stop offset="0" stop-color="{col}" stop-opacity=".22"/>'
+                     f'<stop offset="1" stop-color="{col}" stop-opacity="0"/></linearGradient></defs>'
+                     f'<path d="M{" L".join(pts)} L {lx},{h-pad} L {pad},{h-pad} Z" fill="url(#g{q["sym"]})"/>'
+                     f'<path d="M{" L".join(pts)}" fill="none" stroke="{col}" stroke-width="1.8"/>'
+                     f'<circle cx="{pts[-1].split(",")[0]}" cy="{pts[-1].split(",")[1]}" r="3" fill="{col}"/></svg>')
+        cards.append(
+            f'<div class="idx-card" onclick="location.href=\'detail.html?s={H.escape(q["sym"])}\'">'
+            f'<div class="idx-top"><span class="idx-name">{q["name"]}</span><span class="idx-sym">{q["short"]}</span></div>'
+            f'<div class="idx-nums"><span class="idx-price">{q["price"]:,.2f}</span>'
+            f'<span class="idx-chg {cls}">{chg_s}</span></div>{chart}</div>'
+        )
+    return "\n".join(cards)
 
 def sparkline(closes):
     vals = [c for c in closes if c is not None]
@@ -400,7 +439,7 @@ DETAIL_TEMPLATE = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{title}} · SAM C 情报终端</title>
 <style>
-:root{--bg:#131722;--panel:#1e222d;--panel2:#242a37;--hover:#2a3040;--line:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--cyan:#2962ff;--gold:#d4a853;--up:#f23645;--down:#089981;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+:root{--bg:#131722;--panel:#1e222d;--panel2:#242a37;--hover:#2a3040;--line:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--cyan:#2962ff;--gold:#d4a853;--up:#089981;--down:#f23645;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:36px}
 .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:9px 18px;background:rgba(19,23,34,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
@@ -541,7 +580,9 @@ def main():
         "{{decision_list}}": decision_list_html(),
         "{{timeline}}": timeline_html(),
         "{{hero_quotes}}": hero_quotes_html(quotes),
+        "{{idx_cards}}": index_charts_html(quotes),
         "{{market_rows}}": market_rows_html(quotes),
+        "{{market_count}}": str(len(quotes) - sum(1 for q in quotes if q["group"] == "全球大盘")),
         "{{news_items}}": news_items_html(),
         "{{dxi_chart}}": dxi_svg, "{{dxi_value}}": dxi_val, "{{dxi_sub}}": dxi_sub,
         "{{revenue_table}}": revenue_table_html(),
