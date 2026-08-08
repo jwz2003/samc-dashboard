@@ -521,14 +521,10 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 <script>
 window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
 const s = new URLSearchParams(location.search).get('s');
-const q = (window.QUOTES||{})[s];
 document.getElementById('deep-link').href = 'deep.html?s=' + encodeURIComponent(s);
-document.title = (q? q.short+' · ' : '') + 'SAM C';
-if (!q) {
-  document.getElementById('errbox').style.display = 'block';
-  document.getElementById('errbox').textContent = '未找到标的「' + s + '」——数据尚未生成或代码有误';
-  document.getElementById('price').textContent = '—';
-} else {
+const fail = function(m){ var e=document.getElementById('errbox'); e.style.display='block'; e.textContent=m; document.getElementById('price').textContent='—'; };
+function render(q){
+  document.title = q.short + ' · SAM C';
   document.getElementById('sym').textContent = q.short;
   document.getElementById('name').textContent = q.name + ' · ' + q.group;
   document.getElementById('price').textContent = q.price.toLocaleString(undefined,{minimumFractionDigits:2});
@@ -574,6 +570,12 @@ if (!q) {
   const nw = q.news||[];
   document.getElementById('news').innerHTML = nw.length ? nw.map(n=>`<a href="${n.u}" target="_blank">${n.t}<span class="src">${n.s}</span></a>`).join('') : '<div class="empty">暂无相关新闻</div>';
 }
+(function(){ const sc=document.createElement('script');
+  sc.src='data/'+encodeURIComponent(s)+'.js';
+  sc.onload=function(){ if(window.QUOTE){ render(window.QUOTE); } else { fail('数据文件为空'); } };
+  sc.onerror=function(){ fail('数据加载失败：网络问题或数据未生成，请刷新重试'); };
+  document.head.appendChild(sc);
+})();
 document.getElementById('src').textContent = 'Yahoo Finance · 东方财富 · Google News · 更新 ' + new Date().toLocaleString('zh-CN');
 </script>
 </body>
@@ -659,12 +661,9 @@ tr:hover td{background:var(--hover)}
 <script>
 window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
 const s = new URLSearchParams(location.search).get('s');
-const q = (window.QUOTES||{})[s];
 document.getElementById('back').href = 'detail.html?s=' + encodeURIComponent(s);
-if (!q) {
-  const e=document.getElementById('errbox'); e.style.display='block';
-  e.textContent='未找到标的「'+s+'」';
-} else {
+const fail = function(m){ var e=document.getElementById('errbox'); e.style.display='block'; e.textContent=m; document.getElementById('price').textContent='—'; };
+function render(q){
   document.title = q.short + ' · 深度分析 · SAM C';
   document.getElementById('sym').textContent = q.short;
   document.getElementById('name').textContent = q.name + ' · ' + q.group;
@@ -757,6 +756,12 @@ if (!q) {
   }
   document.getElementById('t-monthly').innerHTML=rows.reverse().join('');
 }
+(function(){ const sc=document.createElement('script');
+  sc.src='data/'+encodeURIComponent(s)+'.js';
+  sc.onload=function(){ if(window.QUOTE){ render(window.QUOTE); } else { fail('数据文件为空'); } };
+  sc.onerror=function(){ fail('数据加载失败：网络问题或数据未生成，请刷新重试'); };
+  document.head.appendChild(sc);
+})();
 document.getElementById('src').textContent='Yahoo Finance · 东方财富 · 更新 '+new Date().toLocaleString('zh-CN');
 </script>
 </body>
@@ -786,6 +791,16 @@ def main():
     with open(os.path.join(BASE, "data.js"), "w", encoding="utf-8") as f:
         f.write("window.QUOTES=" + json.dumps(data, ensure_ascii=False) + ";")
 
+    # 按标的拆分数据文件（data/<sym>.js，每个 ~5KB，动态加载）
+    from urllib.parse import quote as _q
+    ddir = os.path.join(BASE, "data")
+    os.makedirs(ddir, exist_ok=True)
+    for qd in quotes:
+        slim = {k: qd[k] for k in ("short", "name", "group", "price", "chg", "cur", "vol", "hi52", "lo52", "ytd", "ma20", "ma50", "rsi14", "closes", "dates", "news")}
+        fn = os.path.join(ddir, _q(qd["sym"], safe="") + ".js")
+        with open(fn, "w", encoding="utf-8") as f:
+            f.write("window.QUOTE=" + json.dumps(slim, ensure_ascii=False) + ";")
+
     # index.html
     dxi_svg, dxi_val, dxi_sub = dxi_block()
     repl = {
@@ -801,7 +816,7 @@ def main():
         "{{dxi_chart}}": dxi_svg, "{{dxi_value}}": dxi_val, "{{dxi_sub}}": dxi_sub,
         "{{revenue_table}}": revenue_table_html(),
         "{{updated_at}}": now.strftime("%Y-%m-%d %H:%M"),
-        "{{data_js}}": f"<script src=\"data.js?v={now.strftime('%Y%m%d%H%M')}\"></script>",
+        "{{data_js}}": "",
     }
     tpl = open(os.path.join(BASE, "template.html"), encoding="utf-8").read()
     for k, v in repl.items():

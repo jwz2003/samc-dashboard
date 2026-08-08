@@ -1,0 +1,1 @@
+window.QUOTE={"short": "STAR", "name": "科创50", "group": "科技指数", "price": 1744.0236, "chg": 0.0, "cur": "CNY", "vol": "1.2B", "hi52": 1744.0235595703125, "lo52": 1744.0235595703125, "ytd": null, "ma20": null, "ma50": null, "rsi14": null, "closes": [1744.0235595703125], "dates": ["2026-08-07"], "news": []};

@@ -1,0 +1,1 @@
+window.QUOTE={"short": "ChiNext", "name": "创业板指", "group": "科技指数", "price": 3563.1165, "chg": 0.0, "cur": "CNY", "vol": "564.8M", "hi52": 3563.116455078125, "lo52": 3563.116455078125, "ytd": null, "ma20": null, "ma50": null, "rsi14": null, "closes": [3563.116455078125], "dates": ["2026-08-07"], "news": []};

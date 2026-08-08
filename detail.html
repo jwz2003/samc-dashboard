@@ -71,18 +71,14 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   </div>
 </div>
 <div class="statusbar"><span id="src"></span><span>仅供个人研究 · 模拟决策不构成投资建议</span></div>
-<script src="data.js?v=202608082005"></script>
+<script src="data.js?v=202608082016"></script>
 <script>
 window.onerror = function(m){ var e=document.getElementById('errbox'); if(e){ e.style.display='block'; e.textContent='加载出错：'+m; } };
 const s = new URLSearchParams(location.search).get('s');
-const q = (window.QUOTES||{})[s];
 document.getElementById('deep-link').href = 'deep.html?s=' + encodeURIComponent(s);
-document.title = (q? q.short+' · ' : '') + 'SAM C';
-if (!q) {
-  document.getElementById('errbox').style.display = 'block';
-  document.getElementById('errbox').textContent = '未找到标的「' + s + '」——数据尚未生成或代码有误';
-  document.getElementById('price').textContent = '—';
-} else {
+const fail = function(m){ var e=document.getElementById('errbox'); e.style.display='block'; e.textContent=m; document.getElementById('price').textContent='—'; };
+function render(q){
+  document.title = q.short + ' · SAM C';
   document.getElementById('sym').textContent = q.short;
   document.getElementById('name').textContent = q.name + ' · ' + q.group;
   document.getElementById('price').textContent = q.price.toLocaleString(undefined,{minimumFractionDigits:2});
@@ -128,6 +124,12 @@ if (!q) {
   const nw = q.news||[];
   document.getElementById('news').innerHTML = nw.length ? nw.map(n=>`<a href="${n.u}" target="_blank">${n.t}<span class="src">${n.s}</span></a>`).join('') : '<div class="empty">暂无相关新闻</div>';
 }
+(function(){ const sc=document.createElement('script');
+  sc.src='data/'+encodeURIComponent(s)+'.js';
+  sc.onload=function(){ if(window.QUOTE){ render(window.QUOTE); } else { fail('数据文件为空'); } };
+  sc.onerror=function(){ fail('数据加载失败：网络问题或数据未生成，请刷新重试'); };
+  document.head.appendChild(sc);
+})();
 document.getElementById('src').textContent = 'Yahoo Finance · 东方财富 · Google News · 更新 ' + new Date().toLocaleString('zh-CN');
 </script>
 </body>
