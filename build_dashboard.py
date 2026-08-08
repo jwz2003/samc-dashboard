@@ -92,7 +92,11 @@ def ma(closes, n):
 
 def fetch_yahoo(sym):
     """返回 dict 或 None"""
-    d = json.loads(curl(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=1y"))
+    raw = curl(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=1y")
+    try:
+        d = json.loads(raw)
+    except Exception:
+        return None
     r = d["chart"]["result"][0]
     m = r["meta"]
     q = r["indicators"]["quote"][0]
