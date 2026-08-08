@@ -180,6 +180,7 @@ td.vol{font-family:var(--mono);font-size:10px;color:var(--faint)}
   <div>UPDATED {{updated_at}} · 仅供个人研究 · 模拟决策不构成投资建议</div>
 </div>
 
+<script src="data.js"></script>
 <script>
 // 搜索过滤 watchlist
 const q = document.getElementById('q');
@@ -189,6 +190,11 @@ q.addEventListener('input', () => {
     if (tr.classList.contains('group')) return;
     tr.style.display = tr.textContent.toLowerCase().includes(k) ? '' : 'none';
   });
+});
+// 行点击 → 详情页
+document.querySelectorAll('#watchlist tbody tr[data-sym]').forEach(tr => {
+  tr.style.cursor = 'pointer';
+  tr.addEventListener('click', () => { location.href = 'detail.html?s=' + encodeURIComponent(tr.dataset.sym); });
 });
 </script>
 </body>

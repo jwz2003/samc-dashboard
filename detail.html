@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{title}} · SAM C 情报终端</title>
+<style>
+:root{--bg:#131722;--panel:#1e222d;--panel2:#242a37;--hover:#2a3040;--line:#2a2e39;--txt:#d1d4dc;--dim:#787b86;--faint:#5d606b;--cyan:#2962ff;--gold:#d4a853;--up:#f23645;--down:#089981;--mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:36px}
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:9px 18px;background:rgba(19,23,34,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.back{color:var(--dim);text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:6px}
+.back:hover{color:var(--txt);border-color:var(--line2)}
+.sym-big{font-family:var(--mono);font-size:20px;font-weight:800;color:#7db3ff}
+.name-line{font-size:11px;color:var(--dim)}
+.live{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);letter-spacing:1px}
+.live i{width:6px;height:6px;border-radius:50%;background:var(--down);box-shadow:0 0 6px var(--down);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 20px}
+.price-row{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:4px}
+.price{font-family:var(--mono);font-size:44px;font-weight:800;letter-spacing:.5px}
+.chg{font-family:var(--mono);font-size:20px;font-weight:700}
+.up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--dim)}
+.cur{font-size:12px;color:var(--faint);margin-left:2px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+.m{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.m .k{font-size:10px;letter-spacing:1px;color:var(--faint);text-transform:uppercase}
+.m .v{font-family:var(--mono);font-size:17px;font-weight:700;margin-top:2px}
+.m .s{font-size:10.5px;color:var(--dim)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:14px;overflow:hidden}
+.panel-h{padding:8px 14px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-weight:700}
+.chart-box{background:#0e1119;padding:12px 8px 4px}
+.chart-box svg{width:100%;height:320px;display:block}
+.legend{display:flex;gap:18px;padding:8px 14px;font-size:10.5px;color:var(--dim)}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
+.news a{display:block;padding:8px 14px;color:#b8bdc9;text-decoration:none;font-size:12px;border-bottom:1px dashed rgba(42,46,57,.8)}
+.news a:hover{color:#7db3ff;background:var(--hover)}
+.news .src{color:var(--faint);font-size:9.5px;margin-left:6px}
+.pos-bar{height:8px;border-radius:4px;background:#0e1119;border:1px solid var(--line);overflow:hidden;margin-top:6px}
+.pos-bar i{display:block;height:100%;background:linear-gradient(90deg,#089981,var(--gold),#f23645)}
+.empty{color:var(--faint);font-style:italic;font-size:11px;padding:8px 14px}
+.statusbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:5px 18px;background:rgba(19,23,34,.94);border-top:1px solid var(--line);font-size:10px;color:var(--faint);font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="back" href="index.html">← 返回</a>
+  <div><span class="sym-big" id="sym">—</span> <span class="name-line" id="name"></span></div>
+  <div class="live"><i></i>LIVE</div>
+</div>
+<div class="wrap">
+  <div class="price-row">
+    <span class="price" id="price">—</span><span class="chg" id="chg"></span><span class="cur" id="cur"></span>
+  </div>
+  <div class="metrics" id="metrics"></div>
+  <div class="panel">
+    <div class="panel-h">近一年走势 · 价格 / MA20 / MA50</div>
+    <div class="chart-box"><div id="chart"></div></div>
+    <div class="legend"><span><i style="background:#7db3ff"></i>价格</span><span><i style="background:var(--gold)"></i>MA20</span><span><i style="background:#b066ff"></i>MA50</span></div>
+  </div>
+  <div class="panel">
+    <div class="panel-h">相关新闻</div>
+    <div class="news" id="news"></div>
+  </div>
+</div>
+<div class="statusbar"><span id="src"></span><span>仅供个人研究 · 模拟决策不构成投资建议</span></div>
+<script src="data.js"></script>
+<script>
+const s = new URLSearchParams(location.search).get('s');
+const q = (window.QUOTES||{})[s];
+document.title = (q? q.short+' · ' : '') + 'SAM C 情报终端';
+if (!q) { document.getElementById('price').textContent = '未找到该标的'; }
+else {
+  document.getElementById('sym').textContent = q.short;
+  document.getElementById('name').textContent = q.name + ' · ' + q.group;
+  document.getElementById('price').textContent = q.price.toLocaleString(undefined,{minimumFractionDigits:2});
+  document.getElementById('cur').textContent = q.cur;
+  const c = document.getElementById('chg');
+  c.textContent = (q.chg>=0?'+':'') + q.chg.toFixed(2) + '%';
+  c.className = 'chg ' + (q.chg>0.05?'up':q.chg<-0.05?'down':'flat');
+  // 指标
+  const pos = q.hi52>q.lo52 ? Math.round((q.price-q.lo52)/(q.hi52-q.lo52)*100) : 0;
+  const m = [
+    ['52周高', q.hi52.toLocaleString(), ''], ['52周低', q.lo52.toLocaleString(), ''],
+    ['年初至今', q.ytd!=null?(q.ytd>=0?'+':'')+q.ytd.toFixed(1)+'%':'未披露', q.ytd!=null?(q.ytd>0?'up':'down'):''],
+    ['MA20', q.ma20!=null?q.ma20.toLocaleString():'—', q.ma20!=null?(q.price>=q.ma20?'up':'down'):''],
+    ['MA50', q.ma50!=null?q.ma50.toLocaleString():'—', q.ma50!=null?(q.price>=q.ma50?'up':'down'):''],
+    ['RSI14', q.rsi14!=null?q.rsi14.toFixed(1):'—', q.rsi14!=null?(q.rsi14>=70?'up':q.rsi14<=30?'down':''):''],
+    ['成交量', q.vol, ''], ['52周位置', pos+'%', '']
+  ];
+  document.getElementById('metrics').innerHTML = m.map(x =>
+    `<div class="m"><div class="k">${x[0]}</div><div class="v ${x[2]}">${x[1]}</div>` +
+    (x[0]==='RSI14'&&q.rsi14!=null?`<div class="s">${q.rsi14>=70?'超买':q.rsi14<=30?'超卖':'中性'}</div>`:'') +
+    (x[0]==='52周位置'?`<div class="pos-bar"><i style="width:${pos}%"></i></div>`:'') +
+    `</div>`).join('');
+  // 大图
+  const W=900,H=300,P=12,cl=q.closes,ds=q.dates;
+  if (cl && cl.length>10) {
+    const mn=Math.min(...cl), mx=Math.max(...cl), rg=(mx-mn)||1;
+    const X=i=>P+i*(W-2*P)/(cl.length-1), Y=v=>H-P-(v-mn)/rg*(H-2*P);
+    const line=(arr,color,w)=>{let d='';arr.forEach((v,i)=>{d+=(i?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1)+' '});return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}"/>`};
+    const ma20=q.ma20?null:null, m20=cl.map((_,i)=>i>=19?cl.slice(i-19,i+1).reduce((a,b)=>a+b)/20:null);
+    const m50=cl.map((_,i)=>i>=49?cl.slice(i-49,i+1).reduce((a,b)=>a+b)/50:null);
+    let grid='';for(let g=0;g<5;g++){const y=Y(mn+rg*g/4);grid+=`<line x1="${P}" y1="${y}" x2="${W-P}" y2="${y}" stroke="#2a2e39" stroke-width="1"/>`;}
+    const area=`<path d="M${X(0).toFixed(1)},${Y(cl[0]).toFixed(1)} ${cl.map((v,i)=>'L'+X(i).toFixed(1)+','+Y(v).toFixed(1)).join(' ')} L${X(cl.length-1).toFixed(1)},${H-P} L${X(0).toFixed(1)},${H-P} Z" fill="rgba(41,98,255,.12)"/>`;
+    document.getElementById('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${area}${line(cl,'#7db3ff',2)}${line(m20.filter(v=>v!=null),'#d4a853',1.2)}${line(m50.filter(v=>v!=null),'#b066ff',1.2)}</svg>`;
+  }
+  // 新闻
+  const nw = q.news||[];
+  document.getElementById('news').innerHTML = nw.length ? nw.map(n=>`<a href="${n.u}" target="_blank">${n.t}<span class="src">${n.s}</span></a>`).join('') : '<div class="empty">暂无相关新闻</div>';
+}
+document.getElementById('src').textContent = '数据源：Yahoo Finance / 东方财富 / Google News · 更新 ' + new Date().toLocaleString('zh-CN');
+</script>
+</body>
+</html>
