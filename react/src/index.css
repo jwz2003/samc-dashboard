@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+/* ===== TradingView 深色主题变量 ===== */
+:root {
+  --tv-bg: #131722;
+  --tv-card: #1e222d;
+  --tv-card-hover: #2a2e39;
+  --tv-border: #2a2e39;
+  --tv-text: #d1d4dc;
+  --tv-dim: #787b86;
+  --tv-faint: #5d606b;
+  --tv-blue: #2962ff;
+  --tv-gold: #d4a853;
+  --tv-up: #089981;
+  --tv-down: #f23645;
+  --tv-warn: #ff9800;
+  --tv-sel: rgba(41, 98, 255, 0.22);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-size: 12px;
+  color: var(--tv-text);
+  user-select: none;
+}
+
+.mono { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+/* 细边框 + 紧凑间距的 TradingView 风格工具类 */
+.tv-panel { background: var(--tv-card); border: 1px solid var(--tv-border); }
+.tv-hover:hover { background: var(--tv-card-hover); }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #363a45; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4a4f5c; }
+
+/* 折叠/展开动画 */
+.collapse-anim { transition: width 0.22s ease, height 0.22s ease, opacity 0.18s ease; }
+.fade-anim { transition: opacity 0.18s ease; }
+
+/* 底部面板拖拽分隔条 */
+.resize-handle { cursor: ns-resize; }
+.resize-handle:hover { background: var(--tv-blue); }
+
+/* 日志级别颜色 */
+.log-INFO { color: #4caf9e; }
+.log-WARN { color: var(--tv-warn); }
+.log-ERROR { color: var(--tv-down); }
